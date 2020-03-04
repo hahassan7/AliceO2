@@ -11,6 +11,7 @@
 /// \file Clusterizer.cxx
 /// \brief Implementation of the EMCAL clusterizer
 #include <cstring>
+#include <gsl/span>
 #include "FairLogger.h" // for LOG
 #include "EMCALReconstruction/Clusterizer.h"
 
@@ -121,7 +122,7 @@ void Clusterizer<InputType>::getTopologicalRowColumn(const InputType& input, int
 /// Return number of found clusters. Start clustering from highest energy cell.
 //____________________________________________________________________________
 template <class InputType>
-void Clusterizer<InputType>::findClusters(const std::vector<InputType>& inputArray)
+void Clusterizer<InputType>::findClusters(const gsl::span<const InputType>& inputArray)
 {
   mFoundClusters.clear();
   mInputIndices.clear();

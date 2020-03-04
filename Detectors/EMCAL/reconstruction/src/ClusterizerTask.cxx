@@ -11,9 +11,15 @@
 /// \file  ClusterizerTask.cxx
 /// \brief Implementation of the EMCAL cluster finder task
 
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <iterator>
+#include <gsl/span>
 #include "FairLogger.h"      // for LOG
 #include "FairRootManager.h" // for FairRootManager
 #include "EMCALReconstruction/ClusterizerTask.h"
+#include "DataFormatsEMCAL/Cluster.h"
 
 #include <TFile.h>
 
@@ -70,19 +76,40 @@ void ClusterizerTask<InputType>::process(const std::string inputFileName, const 
     LOG(FATAL) << "Failed to open output file " << outputFileName;
   }
 
+  //std::vector<O2::emcal::TriggerRecord>
+
   // Create output tree
   std::unique_ptr<TTree> outTree = std::make_unique<TTree>("o2sim", "EMCAL clusters");
   outTree->Branch("EMCALCluster", &mClustersArray);
   outTree->Branch("EMCALClusterInputIndices", &mClustersInputIndices);
+  outTree->Branch("EMCALTriggerRecordsCLusters", &mClusterTriggerRecordsClusters);
+  outTree->Branch("EMCALTriggerRecordsIndices", &mClusterTriggerRecordsIndices);
+
+  mClustersArray->clear();
+  mClustersInputIndices->clear();
+  mClusterTriggerRecordsClusters->clear();
+  mClusterTriggerRecordsIndices->clear();
 
   // Loop over entries of the input tree
   mInputReader->openInput(inputFileName);
   while (mInputReader->readNextEntry()) {
-    mClusterizer.findClusters(*mInputReader->getInputArray()); // Find clusters on cells/digits given in reader::mInputArray (pass by ref)
 
-    // Get found clusters + cell/digit indices for output
-    mClustersArray = mClusterizer.getFoundClusters();
-    mClustersInputIndices = mClusterizer.getFoundClustersInputIndices();
+    auto InputVector = mInputReader->getInputArray();
+
+    //for(auto* iTrgRcrd : mInputReader->getTriggerArray()){
+    for (auto iTrgRcrd = mInputReader->getTriggerArray()->begin(); iTrgRcrd != mInputReader->getTriggerArray()->end(); ++iTrgRcrd) {
+      //if (iTrgRcrd->getNumberOfObjects() <= 0) continue;
+      mClusterizer.findClusters(gsl::span<const InputType>(InputVector->data() + iTrgRcrd->getFirstEntry(), iTrgRcrd->getNumberOfObjects())); // Find clusters on cells/digits given in reader::mInputArray (pass by ref)
+
+      // Get found clusters + cell/digit indices for output
+      auto clusterstmp = mClusterizer.getFoundClusters();
+      auto clusterIndecestmp = mClusterizer.getFoundClustersInputIndices();
+      std::copy(clusterstmp->begin(), clusterstmp->end(), std::back_inserter(*mClustersArray));
+      std::copy(clusterIndecestmp->begin(), clusterIndecestmp->end(), std::back_inserter(*mClustersInputIndices));
+
+      mClusterTriggerRecordsClusters->emplace_back(iTrgRcrd->getBCData(), iTrgRcrd->getFirstEntry(), iTrgRcrd->getNumberOfObjects());
+      mClusterTriggerRecordsIndices->emplace_back(iTrgRcrd->getBCData(), iTrgRcrd->getFirstEntry(), iTrgRcrd->getNumberOfObjects());
+    }
     outTree->Fill();
   }
 

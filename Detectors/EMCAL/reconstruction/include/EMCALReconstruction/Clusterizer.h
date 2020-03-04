@@ -14,6 +14,7 @@
 #define ALICEO2_EMCAL_CLUSTERIZER_H
 
 #include <array>
+#include <gsl/span>
 #include "Rtypes.h"
 #include "DataFormatsEMCAL/Cluster.h"
 #include "DataFormatsEMCAL/Digit.h"
@@ -62,7 +63,8 @@ class Clusterizer
   ~Clusterizer() = default;
 
   void initialize(double timeCut, double timeMin, double timeMax, double gradientCut, bool doEnergyGradientCut, double thresholdSeedE, double thresholdCellE);
-  void findClusters(const std::vector<InputType>& inputArray);
+  //void findClusters(const std::vector<InputType>& inputArray);
+  void findClusters(const gsl::span<const InputType>& inputArray);
   const std::vector<Cluster>* getFoundClusters() const { return &mFoundClusters; }
   const std::vector<ClusterIndex>* getFoundClustersInputIndices() const { return &mInputIndices; }
   void setGeometry(Geometry* geometry) { mEMCALGeometry = geometry; }
