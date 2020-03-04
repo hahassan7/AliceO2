@@ -81,6 +81,8 @@ void ClusterizerTask<InputType>::process(const std::string inputFileName, const 
     LOG(FATAL) << "Failed to open output file " << outputFileName;
   }
 
+  //std::vector<O2::emcal::TriggerRecord>
+
   // Create output tree
   std::unique_ptr<TTree> outTree = std::make_unique<TTree>("o2sim", "EMCAL clusters");
   outTree->Branch("EMCCluster", &mClustersArray);
