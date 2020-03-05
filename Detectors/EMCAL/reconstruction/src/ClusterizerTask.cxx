@@ -76,8 +76,6 @@ void ClusterizerTask<InputType>::process(const std::string inputFileName, const 
     LOG(FATAL) << "Failed to open output file " << outputFileName;
   }
 
-  //std::vector<O2::emcal::TriggerRecord>
-
   // Create output tree
   std::unique_ptr<TTree> outTree = std::make_unique<TTree>("o2sim", "EMCAL clusters");
   outTree->Branch("EMCALCluster", &mClustersArray);
@@ -96,9 +94,8 @@ void ClusterizerTask<InputType>::process(const std::string inputFileName, const 
 
     auto InputVector = mInputReader->getInputArray();
 
-    //for(auto* iTrgRcrd : mInputReader->getTriggerArray()){
     for (auto iTrgRcrd = mInputReader->getTriggerArray()->begin(); iTrgRcrd != mInputReader->getTriggerArray()->end(); ++iTrgRcrd) {
-      //if (iTrgRcrd->getNumberOfObjects() <= 0) continue;
+
       mClusterizer.findClusters(gsl::span<const InputType>(InputVector->data() + iTrgRcrd->getFirstEntry(), iTrgRcrd->getNumberOfObjects())); // Find clusters on cells/digits given in reader::mInputArray (pass by ref)
 
       // Get found clusters + cell/digit indices for output

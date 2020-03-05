@@ -66,23 +66,6 @@ bool DigitReader<InputType>::readNextEntry()
   mInputTree->GetEntry(mCurrentEntry);
   mCurrentEntry++;
   return true;
-
-  /*
-  mCurrentEntry
-  auto nev = mInputTree->GetEntries();
-  if (nev != 1) {
-    LOG(FATAL) << "In the self-managed mode the cells/digits trees must have 1 entry only";
-  }
-  auto evID = mInputTree->GetReadEntry();
-  if (evID < -1)
-    evID = -1;
-  if (++evID < nev) {
-    mInputTree->GetEntry(evID);
-    return true;
-  } else {
-    return false;
-  }
-  */
 }
 
 //______________________________________________________________________________

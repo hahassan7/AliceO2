@@ -63,7 +63,6 @@ class Clusterizer
   ~Clusterizer() = default;
 
   void initialize(double timeCut, double timeMin, double timeMax, double gradientCut, bool doEnergyGradientCut, double thresholdSeedE, double thresholdCellE);
-  //void findClusters(const std::vector<InputType>& inputArray);
   void findClusters(const gsl::span<const InputType>& inputArray);
   const std::vector<Cluster>* getFoundClusters() const { return &mFoundClusters; }
   const std::vector<ClusterIndex>* getFoundClustersInputIndices() const { return &mInputIndices; }

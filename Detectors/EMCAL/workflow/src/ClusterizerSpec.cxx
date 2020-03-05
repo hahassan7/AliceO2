@@ -65,10 +65,10 @@ void ClusterizerSpec<InputType>::run(framework::ProcessingContext& ctx)
     return;
   }
 
-  auto Inputs = ctx.inputs().get<std::vector<InputType>>(inputname.c_str());
+  auto Inputs = ctx.inputs().get<gsl::span<InputType>>(inputname.c_str());
   LOG(DEBUG) << "[EMCALClusterizer - run]  Received " << Inputs.size() << " Cells/digits, running clusterizer ...";
 
-  auto InputTriggerRecord = ctx.inputs().get<std::vector<TriggerRecord>>(TrigName.c_str());
+  auto InputTriggerRecord = ctx.inputs().get<gsl::span<TriggerRecord>>(TrigName.c_str());
   LOG(DEBUG) << "[EMCALClusterizer - run]  Received " << InputTriggerRecord.size() << " Trigger Records, running clusterizer ...";
 
   mOutputClusters->clear();
@@ -77,7 +77,7 @@ void ClusterizerSpec<InputType>::run(framework::ProcessingContext& ctx)
 
   for (auto iTrgRcrd : InputTriggerRecord) {
 
-    mClusterizer.findClusters(gsl::span<InputType>(&Inputs[iTrgRcrd.getFirstEntry()], iTrgRcrd.getNumberOfObjects())); // Find clusters on cells/digits (pass by ref)
+    mClusterizer.findClusters(gsl::span<const InputType>(&Inputs[iTrgRcrd.getFirstEntry()], iTrgRcrd.getNumberOfObjects())); // Find clusters on cells/digits (pass by ref)
 
     // Get found clusters + cell/digit indices for output
     // * A cluster contains a range that correspond to the vector of cell/digit indices

@@ -173,7 +173,6 @@ void Clusterizer<InputType>::findClusters(const gsl::span<const InputType>& inpu
 
   // Sort struct arrays with ascending energy
   std::sort(mSeedList.begin(), std::next(std::begin(mSeedList), nCells));
-  //std::sort(mSeedList, mSeedList+nCells);
 
   // Take next valid cell/digit in calorimeter as seed (in descending energy order)
   for (int i = nCells; i--;) {
