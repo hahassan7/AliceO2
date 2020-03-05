@@ -39,6 +39,11 @@ void ClusterizerSpec<InputType>::init(framework::InitContext& ctx)
   // Initialize clusterizer and link geometry
   mClusterizer.initialize(timeCut, timeMin, timeMax, gradientCut, doEnergyGradientCut, thresholdSeedEnergy, thresholdCellEnergy);
   mClusterizer.setGeometry(mGeometry);
+
+  mOutputClusters = new std::vector<o2::emcal::Cluster>();
+  mOutputCellDigitIndices = new std::vector<o2::emcal::ClusterIndex>();
+  mOutputTriggerRecord = new std::vector<o2::emcal::TriggerRecord>();
+  mOutputTriggerRecordIndices = new std::vector<o2::emcal::TriggerRecord>();
 }
 
 template <class InputType>
@@ -74,6 +79,10 @@ void ClusterizerSpec<InputType>::run(framework::ProcessingContext& ctx)
   mOutputClusters->clear();
   mOutputCellDigitIndices->clear();
   mOutputTriggerRecord->clear();
+  mOutputTriggerRecordIndices->clear();
+
+  int currentStartClusters = mOutputClusters->size();
+  int currentStartIndices = mOutputCellDigitIndices->size();
 
   for (auto iTrgRcrd : InputTriggerRecord) {
 
@@ -89,13 +98,19 @@ void ClusterizerSpec<InputType>::run(framework::ProcessingContext& ctx)
     std::copy(outputClustersTemp->begin(), outputClustersTemp->end(), std::back_inserter(*mOutputClusters));
     std::copy(outputCellDigitIndicesTemp->begin(), outputCellDigitIndicesTemp->end(), std::back_inserter(*mOutputCellDigitIndices));
 
-    mOutputTriggerRecord->emplace_back(iTrgRcrd.getBCData(), iTrgRcrd.getFirstEntry(), iTrgRcrd.getNumberOfObjects());
+    mOutputTriggerRecord->emplace_back(iTrgRcrd.getBCData(), currentStartClusters, outputClustersTemp->size());
+    mOutputTriggerRecordIndices->emplace_back(iTrgRcrd.getBCData(), currentStartIndices, outputCellDigitIndicesTemp->size());
+
+    currentStartClusters = mOutputClusters->size();
+    currentStartIndices = mOutputCellDigitIndices->size();
   }
 
   LOG(DEBUG) << "[EMCALClusterizer - run] Writing " << mOutputClusters->size() << " clusters ...";
   ctx.outputs().snapshot(o2::framework::Output{o2::header::gDataOriginEMC, "CLUSTERS", 0, o2::framework::Lifetime::Timeframe}, *mOutputClusters);
   ctx.outputs().snapshot(o2::framework::Output{o2::header::gDataOriginEMC, "INDICES", 0, o2::framework::Lifetime::Timeframe}, *mOutputCellDigitIndices);
-  ctx.outputs().snapshot(o2::framework::Output{o2::header::gDataOriginEMC, "TRGRCRD", 0, o2::framework::Lifetime::Timeframe}, *mOutputTriggerRecord);
+
+  ctx.outputs().snapshot(o2::framework::Output{o2::header::gDataOriginEMC, "CLUSTERSTRGR", 0, o2::framework::Lifetime::Timeframe}, *mOutputTriggerRecord);
+  ctx.outputs().snapshot(o2::framework::Output{o2::header::gDataOriginEMC, "INDICESTRGR", 0, o2::framework::Lifetime::Timeframe}, *mOutputTriggerRecordIndices);
 }
 
 o2::framework::DataProcessorSpec o2::emcal::reco_workflow::getClusterizerSpec(bool useDigits)
@@ -113,12 +128,8 @@ o2::framework::DataProcessorSpec o2::emcal::reco_workflow::getClusterizerSpec(bo
 
   outputs.emplace_back(o2::header::gDataOriginEMC, "CLUSTERS", 0, o2::framework::Lifetime::Timeframe);
   outputs.emplace_back(o2::header::gDataOriginEMC, "INDICES", 0, o2::framework::Lifetime::Timeframe);
-
-  if (useDigits) {
-    outputs.emplace_back(o2::header::gDataOriginEMC, "DIGITSTRGR", 0, o2::framework::Lifetime::Timeframe);
-  } else {
-    outputs.emplace_back(o2::header::gDataOriginEMC, "CELLSTRGR", 0, o2::framework::Lifetime::Timeframe);
-  }
+  outputs.emplace_back(o2::header::gDataOriginEMC, "CLUSTERSTRGR", 0, o2::framework::Lifetime::Timeframe);
+  outputs.emplace_back(o2::header::gDataOriginEMC, "INDICESTRGR", 0, o2::framework::Lifetime::Timeframe);
 
   if (useDigits) {
     return o2::framework::DataProcessorSpec{"EMCALClusterizerSpec",
