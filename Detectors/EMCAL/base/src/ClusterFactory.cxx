@@ -566,11 +566,7 @@ double ClusterFactory::tMaxInCm(const double e, const int key) const
   const double ca = 4.82; // shower max parameter - first guess; ca=TMath::Log(1000./8.07)
   double tmax = 0.;       // position of electromagnetic shower max in cm
 
-<<<<<<< HEAD
   const double x0 = 1.31; // radiation lenght (cm)
-=======
-  double x0 = 1.31; // radiation lenght (cm)
->>>>>>> [EMCAL-651] Development of a transient cluster type for user analyses
 
   if (e > 0.1) {
     tmax = TMath::Log(e) + ca;
