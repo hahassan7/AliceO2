@@ -104,7 +104,7 @@ o2::emcal::AnalysisCluster ClusterFactory::buildCluster(int clusterIndex) const
 //____________________________________________________________________________
 void ClusterFactory::evalDispersion(gsl::span<unsigned short> inputsIndices, AnalysisCluster& clusterAnalysis) const
 {
-  double d = 0., wtot = 0., w = 0.;
+  double d = 0., wtot = 0.;
   int nstat = 0;
 
   // Calculates the dispersion in cell units
@@ -124,7 +124,7 @@ void ClusterFactory::evalDispersion(gsl::span<unsigned short> inputsIndices, Ana
 
       double etai = (double)ieta;
       double phii = (double)iphi;
-      w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
+      double w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
 
       if (w > 0.0) {
         phiMean += phii * w;
@@ -154,7 +154,7 @@ void ClusterFactory::evalDispersion(gsl::span<unsigned short> inputsIndices, Ana
 
       double etai = (double)ieta;
       double phii = (double)iphi;
-      w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
+      double w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
 
       if (w > 0.0) {
         nstat++;
@@ -313,17 +313,13 @@ void ClusterFactory::evalGlobalPosition(gsl::span<unsigned short> inputsIndices,
 void ClusterFactory::evalLocalPositionFit(double deff, double mLogWeight,
                                           double phiSlope, gsl::span<unsigned short> inputsIndices, AnalysisCluster& clusterAnalysis) const
 {
-  double ycorr = 0;
   int i = 0, nstat = 0;
   double clXYZ[3] = {0., 0., 0.}, clRmsXYZ[3] = {0., 0., 0.}, xyzi[3], wtot = 0., w = 0.;
 
-  double dist = tMaxInCm(double(clusterAnalysis.E()));
-
   for (auto iInput : inputsIndices) {
 
-    dist = deff;
     try {
-      mGeomPtr->RelPosCellInSModule(mInputsContainer[iInput].getTower(), dist).GetCoordinates(xyzi[0], xyzi[1], xyzi[2]);
+      mGeomPtr->RelPosCellInSModule(mInputsContainer[iInput].getTower(), deff).GetCoordinates(xyzi[0], xyzi[1], xyzi[2]);
     } catch (InvalidCellIDException& e) {
       LOG(ERROR) << e.what();
       continue;
@@ -374,7 +370,7 @@ void ClusterFactory::evalLocalPositionFit(double deff, double mLogWeight,
   if (phiSlope != 0.0 && mLogWeight > 0.0 && wtot) {
     // Correction in phi direction (y - coords here); Aug 16;
     // May be put to global level or seperate method
-    ycorr = clXYZ[1] * (1. + phiSlope);
+    double ycorr = clXYZ[1] * (1. + phiSlope);
 
     //printf(" y %f : ycorr %f : slope %f \n", clXYZ[1], ycorr, phiSlope);
     clXYZ[1] = ycorr;
@@ -450,10 +446,7 @@ void ClusterFactory::evalElipsAxis(gsl::span<unsigned short> inputsIndices, Anal
 
   std::array<float, 2> lambda;
 
-  double etai = 0, phii = 0, w = 0;
-
   for (auto iInput : inputsIndices) {
-    etai = phii = 0.;
 
     auto [nSupMod, nModule, nIphi, nIeta] = mGeomPtr->GetCellIndex(mInputsContainer[iInput].getTower());
     auto [iphi, ieta] = mGeomPtr->GetCellPhiEtaIndexInSModule(nSupMod, nModule, nIphi, nIeta);
@@ -463,10 +456,10 @@ void ClusterFactory::evalElipsAxis(gsl::span<unsigned short> inputsIndices, Anal
     if (mSharedCluster && nSupMod % 2)
       ieta += EMCAL_COLS;
 
-    etai = (double)ieta;
-    phii = (double)iphi;
+    double etai = (double)ieta;
+    double phii = (double)iphi;
 
-    w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
+    double w = TMath::Max(0., mLogWeight + TMath::Log(mInputsContainer[iInput].getEnergy() / clusterAnalysis.E()));
     // clusterAnalysis.E() summed amplitude of inputs, i.e. energy of cluster
     // Gives smaller value of lambda than log weight
     // w = mEnergyList[iInput] / clusterAnalysis.E(); // Nov 16, 2006 - try just energy
@@ -573,7 +566,7 @@ double ClusterFactory::tMaxInCm(const double e, const int key) const
   const double ca = 4.82; // shower max parameter - first guess; ca=TMath::Log(1000./8.07)
   double tmax = 0.;       // position of electromagnetic shower max in cm
 
-  double x0 = 1.31; // radiation lenght (cm)
+  const double x0 = 1.31; // radiation lenght (cm)
 
   if (e > 0.1) {
     tmax = TMath::Log(e) + ca;
