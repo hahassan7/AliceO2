@@ -59,7 +59,7 @@ class DigitizerSpec final : public o2::base::BaseDPLDigitizer
 
  private:
   Bool_t mFinished = false; ///< Flag for digitization finished
-  FEEDigitizer mDigitizer;     ///< FEEDigitizer object
+  FEEDigitizer mDigitizer;  ///< FEEDigitizer object
   std::vector<TChain*> mSimChains;
   std::vector<Hit> mHits;                ///< Vector with input hits
   std::vector<Digit> mDigits;            ///< Vector with non-accumulated digits (per collision)

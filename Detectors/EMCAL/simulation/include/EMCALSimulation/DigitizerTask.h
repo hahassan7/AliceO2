@@ -47,7 +47,7 @@ class DigitizerTask : public FairTask
   double mFairTimeUnitInNS = 1;                 ///< Fair time unit in ns
   Int_t mSourceID = 0;                          ///< current source
   Int_t mEventID = 0;                           ///< current event id from the source
-  FEEDigitizer mDigitizer;                         ///< FEEDigitizer
+  FEEDigitizer mDigitizer;                      ///< FEEDigitizer
   const std::vector<Hit>* mHitsArray = nullptr; ///< Array of MC hits
   std::vector<Digit>* mDigitsArray = nullptr;   ///< Array of digits
 

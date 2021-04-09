@@ -39,7 +39,6 @@ void DigitsWriteoutBuffer::addDigit(unsigned int towerID, LabeledDigit dig, doub
   int nsamples = int((eventTime - mMarker.mReferenceTime) / mTimeBinWidth);
   auto timeEntry = mMarker.mPositionInBuffer;
   timeEntry[nsamples][towerID].push_back(dig);
-
 }
 
 void DigitsWriteoutBuffer::forwardMarker(double eventTime)

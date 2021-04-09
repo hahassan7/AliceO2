@@ -108,7 +108,7 @@ class SDigitizer : public TObject
   const SimParam* mSimParam = nullptr;     ///< SimParam object
   bool mEmpty = true;                      ///< SDigitizer contains no digits/labels
 
-  std::vector<Digit> mTempDigitVector;                        ///< temporary digit storage
+  std::vector<Digit> mTempDigitVector; ///< temporary digit storage
 
   TRandom3* mRandomGenerator = nullptr;                                            // random number generator
   std::vector<int> mTimeBinOffset;                                                 // offset of first time bin
