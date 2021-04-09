@@ -8,15 +8,15 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#ifndef ALICEO2_EMCAL_DIGITIZER_H
-#define ALICEO2_EMCAL_DIGITIZER_H
+#ifndef ALICEO2_EMCAL_SDIGITIZER_H
+#define ALICEO2_EMCAL_SDIGITIZER_H
 
 #include <memory>
 #include <unordered_map>
 #include <vector>
 #include <list>
 
-#include "Rtypes.h"  // for Digitizer::Class, Double_t, ClassDef, etc
+#include "Rtypes.h"  // for SDigitizer::Class, Double_t, ClassDef, etc
 #include "TObject.h" // for TObject
 #include "TRandom3.h"
 
@@ -26,6 +26,7 @@
 #include "EMCALBase/Hit.h"
 #include "EMCALSimulation/SimParam.h"
 #include "EMCALSimulation/LabeledDigit.h"
+#include "EMCALSimulation/DigitsWriteoutBuffer.h"
 
 #include "SimulationDataFormat/MCTruthContainer.h"
 
@@ -34,17 +35,19 @@ namespace o2
 namespace emcal
 {
 
-/// \class Digitizer
-/// \brief EMCAL FEE digitizer
+/// \class SDigitizer
+/// \brief EMCAL summed digitizer
 /// \ingroup EMCALsimulation
 /// \author Anders Knospe, University of Houston
-class Digitizer : public TObject
+/// \author Hadi Hassan, ORNL
+
+class SDigitizer : public TObject
 {
  public:
-  Digitizer() = default;
-  ~Digitizer() override = default;
-  Digitizer(const Digitizer&) = delete;
-  Digitizer& operator=(const Digitizer&) = delete;
+  SDigitizer() = default;
+  ~SDigitizer() override = default;
+  SDigitizer(const SDigitizer&) = delete;
+  SDigitizer& operator=(const SDigitizer&) = delete;
 
   void init();
   void initCycle();
@@ -103,22 +106,22 @@ class Digitizer : public TObject
   bool mRemoveDigitsBelowThreshold = true; ///< remove digits below threshold
   bool mSimulateNoiseDigits = true;        ///< simulate noise digits
   const SimParam* mSimParam = nullptr;     ///< SimParam object
-  bool mEmpty = true;                      ///< Digitizer contains no digits/labels
+  bool mEmpty = true;                      ///< SDigitizer contains no digits/labels
 
   std::vector<Digit> mTempDigitVector;                        ///< temporary digit storage
-  std::unordered_map<Int_t, std::list<LabeledDigit>> mDigits; ///< used to sort digits and labels by tower
 
-  TRandom3* mRandomGenerator = nullptr;                  // random number generator
-  std::vector<int> mTimeBinOffset;                       // offset of first time bin
-  std::vector<std::vector<double>> mAmplitudeInTimeBins; // amplitude of signal for each time bin
+  TRandom3* mRandomGenerator = nullptr;                                            // random number generator
+  std::vector<int> mTimeBinOffset;                                                 // offset of first time bin
+  std::vector<std::vector<double>> mAmplitudeInTimeBins;                           // amplitude of signal for each time bin
+  o2::emcal::DigitsWriteoutBuffer mRingBuffer = o2::emcal::DigitsWriteoutBuffer(); // Ring buffer for writing digits and labels per tower
 
   float mLiveTime = 1500;  // EMCal live time (ns)
   float mBusyTime = 35000; // EMCal busy time (ns)
   int mDelay = 7;          // number of (full) time bins corresponding to the signal time delay
 
-  ClassDefOverride(Digitizer, 1);
+  ClassDefOverride(SDigitizer, 1);
 };
 } // namespace emcal
 } // namespace o2
 
-#endif /* ALICEO2_EMCAL_DIGITIZER_H */
+#endif /* ALICEO2_EMCAL_SDIGITIZER_H */

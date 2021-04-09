@@ -8,7 +8,7 @@
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
 
-#include "EMCALSimulation/Digitizer.h"
+#include "EMCALSimulation/FEEDigitizer.h"
 #include "EMCALSimulation/SimParam.h"
 #include "DataFormatsEMCAL/Digit.h"
 #include "EMCALBase/Geometry.h"
@@ -24,7 +24,7 @@
 #include <TF1.h>
 #include "FairLogger.h" // for LOG
 
-ClassImp(o2::emcal::Digitizer);
+ClassImp(o2::emcal::FEEDigitizer);
 
 using o2::emcal::Digit;
 using o2::emcal::Hit;
@@ -32,7 +32,7 @@ using o2::emcal::Hit;
 using namespace o2::emcal;
 
 //_______________________________________________________________________
-void Digitizer::init()
+void FEEDigitizer::init()
 {
   mSimParam = &(o2::emcal::SimParam::Instance());
   mLiveTime = mSimParam->getLiveTime();
@@ -71,7 +71,7 @@ void Digitizer::init()
 }
 
 //_______________________________________________________________________
-double Digitizer::rawResponseFunction(double* x, double* par)
+double FEEDigitizer::rawResponseFunction(double* x, double* par)
 {
   double signal = 0.;
   double tau = par[2];
@@ -89,16 +89,16 @@ double Digitizer::rawResponseFunction(double* x, double* par)
 }
 
 //_______________________________________________________________________
-void Digitizer::finish() {}
+void FEEDigitizer::finish() {}
 
 //_______________________________________________________________________
-void Digitizer::initCycle()
+void FEEDigitizer::initCycle()
 {
   mEmpty = false;
 }
 
 //_______________________________________________________________________
-void Digitizer::clear()
+void FEEDigitizer::clear()
 {
   mTriggerTime = -1e20;
   mDigits.clear();
@@ -106,7 +106,7 @@ void Digitizer::clear()
 }
 
 //_______________________________________________________________________
-void Digitizer::process(const std::vector<Hit>& hits)
+void FEEDigitizer::process(const std::vector<Hit>& hits)
 {
   for (auto hit : hits) {
     try {
@@ -136,7 +136,7 @@ void Digitizer::process(const std::vector<Hit>& hits)
 }
 
 //_______________________________________________________________________
-void Digitizer::hitToDigits(const Hit& hit)
+void FEEDigitizer::hitToDigits(const Hit& hit)
 {
   mTempDigitVector.clear();
   Int_t tower = hit.GetDetectorID();
@@ -160,7 +160,7 @@ void Digitizer::hitToDigits(const Hit& hit)
 }
 
 //_______________________________________________________________________
-double Digitizer::smearEnergy(double energy)
+double FEEDigitizer::smearEnergy(double energy)
 {
   Double_t fluct = (energy * mSimParam->getMeanPhotonElectron()) / mSimParam->getGainFluctuations();
   energy *= mRandomGenerator->Poisson(fluct) / fluct;
@@ -168,7 +168,7 @@ double Digitizer::smearEnergy(double energy)
 }
 
 //_______________________________________________________________________
-void Digitizer::setEventTime(double t)
+void FEEDigitizer::setEventTime(double t)
 {
   // assign event time, it should be in a strictly increasing order
   // convert to ns
@@ -193,7 +193,7 @@ void Digitizer::setEventTime(double t)
 }
 
 //_______________________________________________________________________
-void Digitizer::addNoiseDigits(LabeledDigit& d1)
+void FEEDigitizer::addNoiseDigits(LabeledDigit& d1)
 {
   double amplitude = d1.getAmplitude();
   double sigma = mSimParam->getPinNoise();
@@ -208,7 +208,7 @@ void Digitizer::addNoiseDigits(LabeledDigit& d1)
 }
 
 //_______________________________________________________________________
-void Digitizer::fillOutputContainer(std::vector<Digit>& digits, o2::dataformats::MCTruthContainer<o2::emcal::MCLabel>& labelsout)
+void FEEDigitizer::fillOutputContainer(std::vector<Digit>& digits, o2::dataformats::MCTruthContainer<o2::emcal::MCLabel>& labelsout)
 {
   std::list<LabeledDigit> l;
 
@@ -268,7 +268,7 @@ void Digitizer::fillOutputContainer(std::vector<Digit>& digits, o2::dataformats:
 }
 
 //_______________________________________________________________________
-void Digitizer::setCurrSrcID(int v)
+void FEEDigitizer::setCurrSrcID(int v)
 {
   // set current MC source ID
   if (v > MCCompLabel::maxSourceID()) {
@@ -278,7 +278,7 @@ void Digitizer::setCurrSrcID(int v)
 }
 
 //_______________________________________________________________________
-void Digitizer::setCurrEvID(int v)
+void FEEDigitizer::setCurrEvID(int v)
 {
   // set current MC event ID
   if (v > MCCompLabel::maxEventID()) {

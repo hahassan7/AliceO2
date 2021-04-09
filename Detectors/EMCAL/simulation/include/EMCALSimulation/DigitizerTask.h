@@ -16,7 +16,7 @@
 #include "Rtypes.h"   // for DigitizerTask::Class, ClassDef, etc
 
 #include "EMCALBase/Hit.h"
-#include "EMCALSimulation/Digitizer.h"
+#include "EMCALSimulation/FEEDigitizer.h"
 
 namespace o2
 {
@@ -38,7 +38,7 @@ class DigitizerTask : public FairTask
   void Exec(Option_t* option) override;
   void FinishTask() override;
 
-  Digitizer& getDigitizer() { return mDigitizer; }
+  FEEDigitizer& getDigitizer() { return mDigitizer; }
 
   void setFairTimeUnitInNS(double tinNS) { mFairTimeUnitInNS = tinNS < 1. ? 1. : tinNS; }
   double getFairTimeUnitInNS() const { return mFairTimeUnitInNS; }
@@ -47,7 +47,7 @@ class DigitizerTask : public FairTask
   double mFairTimeUnitInNS = 1;                 ///< Fair time unit in ns
   Int_t mSourceID = 0;                          ///< current source
   Int_t mEventID = 0;                           ///< current event id from the source
-  Digitizer mDigitizer;                         ///< Digitizer
+  FEEDigitizer mDigitizer;                         ///< FEEDigitizer
   const std::vector<Hit>* mHitsArray = nullptr; ///< Array of MC hits
   std::vector<Digit>* mDigitsArray = nullptr;   ///< Array of digits
 

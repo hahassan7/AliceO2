@@ -17,7 +17,7 @@
 #include "Framework/Task.h"
 #include "DataFormatsEMCAL/Digit.h"
 #include "EMCALBase/Hit.h"
-#include "EMCALSimulation/Digitizer.h"
+#include "EMCALSimulation/FEEDigitizer.h"
 #include "SimulationDataFormat/MCTruthContainer.h"
 #include <DetectorsBase/BaseDPLDigitizer.h>
 
@@ -28,7 +28,7 @@ namespace o2
 namespace emcal
 {
 /// \brief Create new digitizer spec
-/// \return Digitizer spec
+/// \return FEEDigitizer spec
 
 /// \class DigitizerSpec
 /// \brief Task for EMCAL digitization in the data processing layer
@@ -59,7 +59,7 @@ class DigitizerSpec final : public o2::base::BaseDPLDigitizer
 
  private:
   Bool_t mFinished = false; ///< Flag for digitization finished
-  Digitizer mDigitizer;     ///< Digitizer object
+  FEEDigitizer mDigitizer;     ///< FEEDigitizer object
   std::vector<TChain*> mSimChains;
   std::vector<Hit> mHits;                ///< Vector with input hits
   std::vector<Digit> mDigits;            ///< Vector with non-accumulated digits (per collision)
@@ -68,7 +68,7 @@ class DigitizerSpec final : public o2::base::BaseDPLDigitizer
 };
 
 /// \brief Create new digitizer spec
-/// \return Digitizer spec
+/// \return FEEDigitizer spec
 o2::framework::DataProcessorSpec getEMCALDigitizerSpec(int channel, bool mctruth = true);
 
 } // end namespace emcal

@@ -12,7 +12,7 @@
 #include "EMCALBase/Geometry.h"
 #include "EMCALBase/GeometryBase.h"
 #include "EMCALBase/Hit.h"
-#include "EMCALSimulation/Digitizer.h"
+#include "EMCALSimulation/FEEDigitizer.h"
 
 #include "FairLogger.h"      // for LOG
 #include "FairRootManager.h" // for FairRootManager
@@ -22,7 +22,7 @@
 ClassImp(o2::emcal::DigitizerTask);
 
 using o2::emcal::Digit;
-using o2::emcal::Digitizer;
+using o2::emcal::FEEDigitizer;
 using o2::emcal::Hit;
 
 using namespace o2::emcal;
