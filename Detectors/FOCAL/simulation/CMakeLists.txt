@@ -11,6 +11,8 @@
 
 o2_add_library(FOCALSimulation
     SOURCES src/Detector.cxx
+    src/LabeledDigit.cxx
+    src/SDigitizer.cxx
     PUBLIC_LINK_LIBRARIES ROOT::TreePlayer O2::FOCALBase O2::DetectorsBase O2::SimConfig O2::SimulationDataFormat O2::Headers O2::DataFormatsFOCAL
     AliceO2::InfoLogger
     Microsoft.GSL::GSL)
@@ -18,7 +20,8 @@ o2_add_library(FOCALSimulation
 o2_target_root_dictionary(
     FOCALSimulation
     HEADERS include/FOCALSimulation/Detector.h
-)
+    include/FOCALSimulation/LabeledDigit.h
+    include/FOCALSimulation/SDigitizer.h)
 
 o2_data_file(COPY geometryFiles  DESTINATION Detectors/Geometry/FOC/)
 o2_data_file(COPY data DESTINATION Detectors/FOC/simulation)
