@@ -18,6 +18,7 @@ constexpr int PADLAYER_MODULE_NHALVES = 2;
 constexpr int PADS_NLAYERS = 20;
 constexpr int PIXELS_NLAYERS = 2;
 constexpr int PADLAYER_WINDOW_LENGTH = 20;
+constexpr double FOCAL_TIMESAMPLE = 100.; //this is here, becase it is used in Digit.h, but not defined in Constants.h
 
 } // namespace o2::focal::constants
 

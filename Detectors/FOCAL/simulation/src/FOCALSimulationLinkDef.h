@@ -18,4 +18,8 @@
 #pragma link C++ class o2::focal::Detector + ;
 #pragma link C++ class o2::base::DetImpl < o2::focal::Detector> + ;
 
+#pragma link C++ class o2::focal::LabeledDigit + ;
+#pragma link C++ class o2::focal::SDigitizer + ;
+#pragma link c++ class std::vector < o2::focal::LabeledDigit> + ;
+
 #endif
