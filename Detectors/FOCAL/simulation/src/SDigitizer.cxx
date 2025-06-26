@@ -38,34 +38,32 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
     }
   }
 
-  // for (auto hit : SHits) {
-  //   try {
+  for (auto hit : SHits) {
 
-  //     int tower = hit.GetDetectorID();
-  //     auto[inside, col, row, layer, segment] = mGeometry-> getVirtualInfo(hit.GetX(), hit.GetY(), hit.GetZ());
+    int tower = hit.GetDetectorID();
+    auto[inside, col, row, layer, segment] = mGeometry-> getVirtualInfo(hit.GetX(), hit.GetY(), hit.GetZ());
 
-  //     if (!inside) {
-  //       LOG(warning) << "tower index out of range: " << tower;
-  //       continue;
-  //     }
+    if (!inside) {
+      LOG(warning) << "tower index out of range: " << tower;
+      continue;
+    }
 
-  //     double energy = hit.GetEnergyLoss();
+    double energy = hit.GetEnergyLoss();
 
-  //     Digit digit(col, row, layer, hit.GetTime(), energy);
-  //     digit.setIndex(tower);
+    Digit digit(col, row, layer, hit.GetTime(), energy);
+    digit.setIndex(tower);
 
-  //     MCLabel label(hit.GetTrackID(), mCurrEvID, mCurrSrcID, false, 1.0);
-  //     if (digit.getEnergy() < __DBL_EPSILON__) {
-  //       label.setAmplitudeFraction(0);
-  //     }
-  //     LabeledDigit d(digit, label);
+    MCLabel label(hit.GetTrackID(), mCurrEvID, mCurrSrcID, false, 1.0);
+    if (digit.getEnergy() < __DBL_EPSILON__) {
+      label.setAmplitudeFraction(0);
+    }
+    LabeledDigit d(digit, label);
 
-  //     digitsPerTower[tower].push_back(d);
+    digitsPerTower[tower].push_back(d);
 
-  //   } catch (InvalidPositionException& e) {
-  //     LOG(error) << "Error in creating the digit: " << e.what();
-  //   }
-  // }
+    //LOG(error) << "Error in creating the digit: " << e.what();
+    
+  }
 
   std::vector<LabeledDigit> digitsVector;
 
