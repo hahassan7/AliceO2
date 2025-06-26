@@ -17,7 +17,8 @@ using o2::focal::Digit;
 using o2::focal::Hit;
 
 using namespace o2::focal;
-______________________________________________________________________
+
+//_______________________________________________________________________
 std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>& hits)
 {
 
@@ -41,7 +42,7 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
     try {
 
       int tower = hit.GetDetectorID();
-      auto[inside, col, row, layer, segment] = mGeometry-> getVirtualInfo(hit.x(), hit.y(), hit.z());
+      auto[inside, col, row, layer, segment] = mGeometry-> getVirtualInfo(hit.GetX(), hit.GetY(), hit.GetZ());
 
       if (!inside) {
         LOG(warning) << "tower index out of range: " << tower;
@@ -51,17 +52,17 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
       double energy = hit.GetEnergyLoss();
 
       Digit digit(col, row, layer, hit.GetTime(), energy);
-      digit->setIndex(hit.DetID());
+      digit.setIndex(tower);
 
       MCLabel label(hit.GetTrackID(), mCurrEvID, mCurrSrcID, false, 1.0);
-      if (digit.getAmplitude() < __DBL_EPSILON__) {
+      if (digit.getEnergy() < __DBL_EPSILON__) {
         label.setAmplitudeFraction(0);
       }
       LabeledDigit d(digit, label);
 
       digitsPerTower[tower].push_back(d);
 
-    } catch (InvalidPositionException& e) {
+    } catch (InvalidPositionException& e) { //this is in GeometryBase for emcal, focal does not have GeometryBase
       LOG(error) << "Error in creating the digit: " << e.what();
     }
   }
@@ -72,7 +73,7 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
 
     o2::focal::LabeledDigit Sdigit = std::accumulate(std::next(labeledDigits.begin()), labeledDigits.end(), labeledDigits.front());
 
-    if (Sdigit.getAmplitude() < __DBL_EPSILON__) {
+    if (Sdigit.getEnergy() < __DBL_EPSILON__) {
       continue;
     }
 
@@ -83,7 +84,8 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
 
   return digitsVector;
 }
-_____________________________________________________________________
+
+//_______________________________________________________________________
 void SDigitizer::setCurrSrcID(int v)
 {
   
@@ -92,7 +94,8 @@ void SDigitizer::setCurrSrcID(int v)
   }
   mCurrSrcID = v;
 }
-____________________________________________________________________
+
+//_______________________________________________________________________
 void SDigitizer::setCurrEvID(int v)
 {
   

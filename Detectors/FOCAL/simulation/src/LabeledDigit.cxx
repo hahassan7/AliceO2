@@ -24,8 +24,8 @@ LabeledDigit::LabeledDigit(int index, int layer, double time, double amplitudeGe
 LabeledDigit& LabeledDigit::operator+=(const LabeledDigit& other)
 {
   if (canAdd(other)) {
-    double a1 = getAmplitude();
-    double a2 = other.getAmplitude();
+    double a1 = getEnergy();
+    double a2 = other.getEnergy();
     double r = ((a1 + a2) != 0) ? 1.0 / (a1 + a2) : 0.0;
     mDigit += other.getDigit();
 

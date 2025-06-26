@@ -44,7 +44,7 @@ class LabeledDigit
 
   bool canAdd(const LabeledDigit other)
   {
-    return (getCol() == other.getCol() && getRow() == other.getRow() && getLayer == other.getLayer());
+    return (getCol() == other.getCol() && getRow() == other.getRow() && getLayer() == other.getLayer());
   }
 
   LabeledDigit& operator+=(const LabeledDigit& other);                    
@@ -66,8 +66,8 @@ class LabeledDigit
   void setIndex(int index) { mDigit.setIndex(index); }
   int getIndex() const { return mDigit.getIndex(); }
 
-  void setEnergy(double energy) { mDigit.setAmplitude(energy); }
-  double getEnergy() { return mDigit.getAmplitude(); }
+  void setEnergy(double energy) { mDigit.setEnergy(energy); }
+  double getEnergy() const { return mDigit.getEnergy(); }
 
   void setTimeStamp(double time) { mDigit.setTimeStamp(time); }
   double getTimeStamp() const { return mDigit.getTimeStamp(); }
