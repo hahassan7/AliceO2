@@ -60,9 +60,6 @@ std::vector<o2::focal::LabeledDigit> SDigitizer::process(const std::vector<Hit>&
     LabeledDigit d(digit, label);
 
     digitsPerTower[tower].push_back(d);
-
-    //LOG(error) << "Error in creating the digit: " << e.what();
-    
   }
 
   std::vector<LabeledDigit> digitsVector;
