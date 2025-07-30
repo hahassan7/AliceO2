@@ -11,6 +11,8 @@
 
 o2_add_library(FOCALWorkflow
     SOURCES src/RawDecoderSpec.cxx
+    src/FOCALDigitizerSpec.cxx
+    src/FOCALDigitWriterSpec.cxx
     PUBLIC_LINK_LIBRARIES O2::Framework O2::DataFormatsFOCAL O2::ITSMFTReconstruction O2::FOCALReconstruction)
 
 o2_add_executable(raw-decoder-workflow
