@@ -19,6 +19,7 @@
 
 namespace o2::focal
 {
+  
 class TriggerRecord
 {
   using BCData = o2::InteractionRecord;
@@ -27,6 +28,7 @@ class TriggerRecord
  public:
   TriggerRecord() = default;
   TriggerRecord(const BCData& bunchcrossing, int firstpadentry, int npadentries, int firstchipentry, int nchipentries, int firsthitentry, int nhitentries) : mBCData(bunchcrossing), mPadDataRange(firstpadentry, npadentries), mPixelChipRange(firstchipentry, nchipentries), mPixelHitRange(firsthitentry, nhitentries) {}
+  TriggerRecord(const BCData& bunchcrossing, int firstentry, int nentries) : mBCData(bunchcrossing), mAllData(firstentry, nentries) {}
   ~TriggerRecord() = default;
 
   void setBCData(const BCData& data) { mBCData = data; }
@@ -56,8 +58,9 @@ class TriggerRecord
   DataRange mPadDataRange;   /// Index range of the pad data for the same trigger (number of pads and first entry in the container)
   DataRange mPixelChipRange; /// Index range of the pixel chips in the same trigger  (number of chips and first entry in the container)
   DataRange mPixelHitRange;  /// Index range of the pixel hits in the same trigger  (number of hits and first entry in the container)
+  DataRange mAllData;
 
-  ClassDefNV(TriggerRecord, 1);
+  ClassDefNV(TriggerRecord, 2);
 };
 
 std::ostream& operator<<(std::ostream& stream, const TriggerRecord& trg);
