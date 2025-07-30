@@ -22,7 +22,7 @@ namespace focal
 /// \return digits writer spec
 o2::framework::DataProcessorSpec getFOCALDigitWriterSpec(bool mctruth = true);
 
-} // end namespace emcal
+} // end namespace focal
 } // end namespace o2
 
 #endif /* STEER_DIGITIZERWORKFLOW_FOCALDIGITWRITER_H_ */

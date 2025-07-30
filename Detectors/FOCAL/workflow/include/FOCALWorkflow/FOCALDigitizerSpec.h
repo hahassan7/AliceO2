@@ -8,7 +8,6 @@
 #include "Framework/Task.h"
 #include "DataFormatsFOCAL/Digit.h"
 #include "FOCALBase/Hit.h"
-#include "FOCALSimulation/Digitizer.h" //we dont have this one yet
 #include "FOCALSimulation/SDigitizer.h"
 #include "SimulationDataFormat/MCTruthContainer.h"
 #include <DetectorsBase/BaseDPLDigitizer.h>
@@ -54,13 +53,11 @@ class DigitizerSpec final : public o2::base::BaseDPLDigitizer, public o2::framew
  private:
   Bool_t mFinished = false;                   ///< Flag for digitization finished
   bool mIsConfigured = false;                 ///< Initialization status of the digitizer
-  bool mRunSDitizer = false;                  ///< Run SDigitization
-  Digitizer mDigitizer;                       ///< Digitizer object
+  bool mRunSDitizer = true;                  ///< Run SDigitization
   o2::focal::SDigitizer mSumDigitizer;        ///< Summed digitizer
   std::vector<Hit> mHits;                     ///< Vector with input hits
   std::vector<TChain*> mSimChains;
   o2::steer::MCKinematicsReader* mcReader; ///< reader to access MC collision information
-  bool mRunDigitizer = true;
 };
 
 /// \brief Create new digitizer spec

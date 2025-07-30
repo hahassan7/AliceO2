@@ -43,10 +43,14 @@ class SDigitizer
 
   void setGeometry(const o2::focal::Geometry* gm) { mGeometry = gm; }
 
+  const o2::focal::Digit& getDigits() const { return labeledDigit.getDigit(); }
+  const std::vector<o2::focal::MCLabel>& getMCLabels() const { return labeledDigit.getLabels(); }
+
  private:
   const Geometry* mGeometry = nullptr; 
   int mCurrSrcID = 0;                  
-  int mCurrEvID = 0;                   
+  int mCurrEvID = 0;    
+  o2::focal::LabeledDigit labeledDigit;
 
   ClassDefNV(SDigitizer, 1);
 };
