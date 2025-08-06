@@ -10,6 +10,8 @@
 #include "TObject.h"
 
 #include "DataFormatsFOCAL/Digit.h"
+#include "DataFormatsFOCAL/MCLabel.h"
+
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
 #include "FOCALSimulation/LabeledDigit.h"
@@ -43,14 +45,13 @@ class SDigitizer
 
   void setGeometry(const o2::focal::Geometry* gm) { mGeometry = gm; }
 
-  const o2::focal::Digit& getDigits() const { return labeledDigit.getDigit(); }
-  const std::vector<o2::focal::MCLabel>& getMCLabels() const { return labeledDigit.getLabels(); }
+  const std::vector<o2::focal::Digit> getDigits(); 
+  const std::vector<o2::focal::MCLabel> getMCLabels();
 
  private:
   const Geometry* mGeometry = nullptr; 
   int mCurrSrcID = 0;                  
-  int mCurrEvID = 0;    
-  o2::focal::LabeledDigit labeledDigit;
+  int mCurrEvID = 0;
 
   ClassDefNV(SDigitizer, 1);
 };
