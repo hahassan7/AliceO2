@@ -748,6 +748,15 @@ WorkflowSpec defineDataProcessing(ConfigContext const& configcontext)
     writerSpecs.emplace_back(o2::emcal::getEMCALDigitWriterSpec(mctruth));
   }
 
+    // the FOCal part
+  if (isEnabled(o2::detectors::DetID::FOC)) {
+    detList.emplace_back(o2::detectors::DetID::FOC);
+    // connect the FOCal digitization
+    digitizerSpecs.emplace_back(o2::focal::getFOCALDigitizerSpec(fanoutsize++, mctruth));
+    // connect the FOCal digit writer
+    writerSpecs.emplace_back(o2::focal::getFOCALDigitWriterSpec(mctruth));
+  }
+
   // add HMPID
   if (isEnabled(o2::detectors::DetID::HMP)) {
     detList.emplace_back(o2::detectors::DetID::HMP);
