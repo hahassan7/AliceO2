@@ -80,6 +80,10 @@
 #include "EMCALWorkflow/EMCALDigitizerSpec.h"
 #include "EMCALWorkflow/EMCALDigitWriterSpec.h"
 
+// for FOCal
+#include "FOCALWorkflow/FOCALDigitizerSpec.h"
+#include "FOCALWorkflow/FOCALDigitWriterSpec.h"
+
 // for HMPID
 #include "HMPIDDigitizerSpec.h"
 #include "HMPIDDigitWriterSpec.h"
