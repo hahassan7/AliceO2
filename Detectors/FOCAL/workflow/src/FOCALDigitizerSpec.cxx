@@ -32,7 +32,7 @@ void DigitizerSpec::initDigitizerTask(framework::InitContext& ctx)
     LOG(error) << "Geometry needs to be loaded before";
   }
 
-  auto geom = o2::focal::Geometry::GetInstance(); 
+  auto geom = o2::focal::Geometry::getInstance(); 
 
   mSumDigitizer.setGeometry(geom);
 
@@ -50,7 +50,7 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
     mIsConfigured = true;
   }
 
-  o2::focal::SimParam::Instance().printKeyValues(true, true);
+  //o2::focal::SimParam::Instance().printKeyValues(true, true); //FOCAL does not have SimParam.
 
   auto context = ctx.inputs().get<o2::steer::DigitizationContext*>("collisioncontext");
 
@@ -99,7 +99,7 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
         }
       } else {
         for (auto& hit : mHits) {
-          summedDigits.emplace_back(hit.GetDetectorID(), hit.GetEnergyLoss(), hit.GetTime());
+          summedDigits.emplace_back(hit.GetDetectorID(), hit.GetZ(), hit.GetTime(), hit.GetEnergyLoss()); //hit.GetZ() is the layer
         }
       }
     }
@@ -140,25 +140,27 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
           if (hit.GetEnergyLoss() < __DBL_EPSILON__) {
             digitlabel.setAmplitudeFraction(0);
           }
-          summedLabeledDigits.emplace_back(hit.GetDetectorID(), hit.GetEnergyLoss(), hit.GetTime(), digitlabel);
+          summedLabeledDigits.emplace_back(hit.GetDetectorID(), hit.GetZ(), hit.GetTime(), hit.GetEnergyLoss(), digitlabel); //hit.GetZ() is the layer
         }
       }
     }
   }
 
-
-  ctx.outputs().snapshot(Output{"FOC", "DIGITS", 0}, mSumDigitizer.getDigits());
-  if (ctx.outputs().isAllowed({"FOC", "DIGITSMCTR", 0})) {
-    ctx.outputs().snapshot(Output{"FOC", "DIGITSMCTR", 0}, mSumDigitizer.getMCLabels());
-  }
-
   std::vector<TriggerRecord> trgrecord; //creating trigger record vector
-  for (int collID = 0; collID < timesview.size(); ++collID) {
-    std::vector<o2::focal::Digit> allDigits = mSumDigitizer.getDigits(collID); //getting the digits of the current collision
+   for (int collID = 0; collID < timesview.size(); ++collID) {
+    std::vector<o2::focal::Digit> allDigits = mSumDigitizer.getDigits(); //getting the digits of the current collision
     int firstdigit = allDigits[0].getIndex(); //getting the index of the first digit
     int ndigits = allDigits.size(); //getting the number of digits
     trgrecord.emplace_back(timesview[collID], firstdigit, ndigits); //filling the trigger record vector
   }
+
+  ctx.outputs().snapshot(Output{"FOC", "DIGITS", 0}, mSumDigitizer.getDigits()); 
+  //ctx.outputs().snapshot(Output{"FOC", "TRGRDIG", 0}, mSumDigitizer.getTriggerRecords()); //mSumDigitizer.getTriggerRecords() is not defined in the code provided, so this line is commented out.
+  if (ctx.outputs().isAllowed({"FOC", "DIGITSMCTR", 0})) {
+    ctx.outputs().snapshot(Output{"FOC", "DIGITSMCTR", 0}, mSumDigitizer.getMCLabels());
+  }
+  ctx.outputs().snapshot(Output{"FOC", "TRIGGERINPUT", 0}, trgrecord);
+
 
   const o2::parameters::GRPObject::ROMode roMode = o2::parameters::GRPObject::TRIGGERING;
   LOG(info) << "FOCAL: Sending ROMode= " << roMode << " to GRPUpdater";
@@ -172,15 +174,14 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
 
 void DigitizerSpec::configure()
 {
- 
+
 }
 
 o2::framework::DataProcessorSpec getFOCALDigitizerSpec(int channel, bool mctruth)
 {
- 
   std::vector<OutputSpec> outputs;
   outputs.emplace_back("FOC", "DIGITS", 0, Lifetime::Timeframe);
-  outputs.emplace_back("FOC", "TRGRDIG", 0, Lifetime::Timeframe);
+  //outputs.emplace_back("FOC", "TRGRDIG", 0, Lifetime::Timeframe);
   if (mctruth) {
     outputs.emplace_back("FOC", "DIGITSMCTR", 0, Lifetime::Timeframe);
   }
@@ -195,6 +196,7 @@ o2::framework::DataProcessorSpec getFOCALDigitizerSpec(int channel, bool mctruth
     "FOCALDigitizer",
     inputs,
     outputs,
+    AlgorithmSpec{o2::framework::adaptFromTask<DigitizerSpec>()},
     Options{
       {"pileup", VariantType::Int, 1, {"whether to run in continuous time mode"}},
       {"disable-dig", VariantType::Bool, false, {"Disable digitisation"}},
