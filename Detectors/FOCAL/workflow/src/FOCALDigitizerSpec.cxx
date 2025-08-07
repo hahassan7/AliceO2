@@ -148,7 +148,7 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
 
   std::vector<TriggerRecord> trgrecord; //creating trigger record vector
    for (int collID = 0; collID < timesview.size(); ++collID) {
-    std::vector<o2::focal::Digit> allDigits = mSumDigitizer.getDigits(); //getting the digits of the current collision
+    std::vector<o2::focal::Digit> allDigits = mSumDigitizer.getDigits(collID); //getting the digits of the current collision
     int firstdigit = allDigits[0].getIndex(); //getting the index of the first digit
     int ndigits = allDigits.size(); //getting the number of digits
     trgrecord.emplace_back(timesview[collID], firstdigit, ndigits); //filling the trigger record vector
