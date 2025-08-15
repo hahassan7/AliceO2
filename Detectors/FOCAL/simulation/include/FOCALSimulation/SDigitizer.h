@@ -52,6 +52,7 @@ class SDigitizer
   const Geometry* mGeometry = nullptr; 
   int mCurrSrcID = 0;                  
   int mCurrEvID = 0;
+  std::vector<o2::focal::LabeledDigit> labeleddigit;
 
   ClassDefNV(SDigitizer, 1);
 };
