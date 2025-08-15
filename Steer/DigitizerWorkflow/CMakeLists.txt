@@ -35,6 +35,8 @@ o2_add_executable(digitizer-workflow
                                         O2::CommonConstants
                                         O2::EMCALSimulation
                                         O2::EMCALWorkflow
+                                        O2::FOCALSimulation
+                                        O2::FOCALWorkflow
                                         O2::FT0Simulation
                                         O2::FV0Simulation
                                         O2::FDDSimulation

@@ -104,7 +104,6 @@ void SDigitizer::setCurrEvID(int v)
 const std::vector<o2::focal::Digit> SDigitizer::getDigits()
 {
   std::vector<o2::focal::Digit> digits;
-  std::vector<o2::focal::LabeledDigit> labeleddigit;
   for (const auto& labeledDigit : labeleddigit) {
     digits.push_back(labeledDigit.getDigit());
   }
@@ -115,7 +114,6 @@ const std::vector<o2::focal::Digit> SDigitizer::getDigits()
 const std::vector<o2::focal::MCLabel> SDigitizer::getMCLabels()
 {
   std::vector<o2::focal::MCLabel> labels;
-  std::vector<o2::focal::LabeledDigit> labeleddigit;
   for (const auto& ld : labeleddigit) {
     const auto& l = ld.getLabels();
     labels.insert(labels.end(), l.begin(), l.end());
