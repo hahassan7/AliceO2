@@ -46,7 +46,6 @@ COMMAND_INSERT_PIX_AT_L9
   COMMAND_PIXEL_READOUT_ON       0.005
 # Pad information
   GLOBAL_PAD_SIZE_X_Y            1
-  GLOBAL_PAD_NX_NY               8
   GLOBAL_PAD_NX                  9
   GLOBAL_PAD_NY                  8
   GLOBAL_PAD_PPTOL               0.
@@ -70,6 +69,11 @@ COMMAND_INSERT_PIX_AT_L9
   GLOBAL_HCAL_TOWER_NY  72
   GLOBAL_HCAL_TOWER_NX  62
   GLOBAL_HCAL_BEAMPIPE  8.4
+# Total height of FOCAL-H in cm, independent of the ECAL size (must be a whole number of pitches of 0.7 cm)
+  GLOBAL_HCAL_SIZE_Y  100.8
+# Fibres per SiPM bundle in x / fibre rows per bundle in y (bundles start at the beam pipe, partial bundles at the outer edge; empty in the beam-pipe hole)
+  GLOBAL_HCAL_FIBRES_PER_SIPM_X  4
+  GLOBAL_HCAL_FIBRES_PER_SIPM_Y  4
 # COMMAND_INSERT_FRONT_PAD_LAYERS
 # COMMAND_INSERT_HCAL_READOUT
 # New VIRTUAL settings

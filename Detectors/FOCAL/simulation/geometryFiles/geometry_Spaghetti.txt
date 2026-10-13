@@ -45,7 +45,6 @@ COMMAND_INSERT_PIX_AT_L9
   COMMAND_PIXEL_READOUT_ON       0.005
 # Pad information
   GLOBAL_PAD_SIZE_X_Y            1
-  GLOBAL_PAD_NX_NY               8
   GLOBAL_PAD_NX                  9
   GLOBAL_PAD_NY                  8
   GLOBAL_PAD_PPTOL               0.

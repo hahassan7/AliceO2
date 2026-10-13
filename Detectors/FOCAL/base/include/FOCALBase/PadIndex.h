@@ -100,6 +100,25 @@ class PadIndex
     return layer * getNChannelsPerLayer() + row * getNCols() + col;
   }
 
+  /// \brief (row, col) -> index of the pad INSIDE its layer = row * nCols + col (< 65536, fits the 16-bit hit detector ID).
+  ///        Returns -1 if out of range. absID = layer * getNChannelsPerLayer() + indexInLayer.
+  int getIndexInLayer(int row, int col) const
+  {
+    if (row < 0 || row >= getNRows() || col < 0 || col >= getNCols()) {
+      return -1;
+    }
+    return row * getNCols() + col;
+  }
+
+  /// \brief (layer, index inside the layer) -> pad index (absID). Returns -1 if out of range.
+  int getIndexFromLayerAndIndexInLayer(int layer, int indexInLayer) const
+  {
+    if (layer < 0 || layer >= mNLayers || indexInLayer < 0 || indexInLayer >= getNChannelsPerLayer()) {
+      return -1;
+    }
+    return layer * getNChannelsPerLayer() + indexInLayer;
+  }
+
   /// \brief pad index -> {layer, row, col}. Returns {-1,-1,-1} if out of range.
   std::tuple<int /*layer*/, int /*row*/, int /*col*/> getLayerRowColFromIndex(int index) const
   {

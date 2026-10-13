@@ -20,7 +20,8 @@
 
 #include "FOCALBase/Composition.h"
 #include "FOCALBase/PadIndex.h"
-#include "FOCALBase/VirtualCellIndex.h"
+#include "FOCALBase/HCALIndex.h"
+#include "FOCALBase/Hit.h"
 
 namespace o2
 {
@@ -165,6 +166,47 @@ class Geometry
   float getHCALPitchSize() const { return mGlobal_HCAL_Pitch_Size; }
   float getHCALBeamPipeHoleSize() const { return mGlobal_HCAL_BeamPipeHole_Size; }
 
+  // ---- FOCAL-H, sheet design: dimensions (COMPOSITION_HCAL_S0/S1/S2 and GLOBAL_HCAL_* lines of the geometry file) ----
+  /// One pitch = sheet with grooves + full sheet + sheet with grooves + full sheet, with one fibre row in each grooved sheet
+  static constexpr int HCAL_FIBRE_ROWS_PER_PITCH = 2;
+  const Composition* getHCALComposition(int stack) const; ///< HCAL composition COMPOSITION_HCAL_S<stack> of the geometry file, nullptr if not defined
+  double getHCALPlateWidth() const;          ///< width of a full-width plate in x (COMPOSITION_HCAL_S0 X, 49.81 cm)
+  double getHCALPlateLength() const;         ///< length of the plates and fibres in z (COMPOSITION_HCAL_S0 Z, 110 cm)
+  double getHCALGroovedSheetThickness() const; ///< thickness of the sheet with grooves (COMPOSITION_HCAL_S0 Y, 0.20 cm)
+  double getHCALFullSheetThickness() const;  ///< thickness of the full sheet (COMPOSITION_HCAL_S2 Y, 0.15 cm)
+  double getHCALFibreRadius() const;         ///< fibre radius (COMPOSITION_HCAL_S1 X / 2, 0.05 cm)
+  double getHCALPitchHeight() const { return HCAL_FIBRE_ROWS_PER_PITCH * (getHCALGroovedSheetThickness() + getHCALFullSheetThickness()); } ///< 0.7 cm
+  float getHCALSizeY() const { return mGlobal_HCAL_SizeY; } ///< total height of FOCAL-H (GLOBAL_HCAL_SIZE_Y, default 100.8 cm)
+  /// \brief Number of pitches over the full height = GLOBAL_HCAL_SIZE_Y / pitch height (144). The HCAL height is a parameter
+  ///        of its own (not taken from the ECAL), so that ECAL descoping scenarios do not change FOCAL-H.
+  int getHCALNumberOfPitches() const;
+  int getHCALNumberOfPitchesBeamPipe() const;    ///< pitches beside the beam-pipe opening (GLOBAL_HCAL_BEAMPIPE / pitch height, 12)
+  int getHCALNumberOfFibresPerRow() const;       ///< fibre positions in one row of a full-width plate = width / fibre pitch (124)
+  int getHCALNumberOfFibreRows() const { return HCAL_FIBRE_ROWS_PER_PITCH * getHCALNumberOfPitches(); } ///< fibre rows over the full height (288)
+
+  // ---- FOCAL-H SiPM indexing, sheet design (see FOCALBase/HCALIndex.h) ----
+  int getHCALFibresPerSiPMX() const { return mGlobal_HCAL_FibresPerSiPM_X; } ///< fibres per SiPM bundle in x (default 4)
+  int getHCALFibresPerSiPMY() const { return mGlobal_HCAL_FibresPerSiPM_Y; } ///< fibre rows per SiPM bundle in y (default 4)
+  /// \brief SiPM index helper configured with the dimensions of this geometry
+  HCALIndex getHCALIndex() const;
+  /// \brief (layer, row, col) of the full cell index of a subsystem:
+  ///        pads -> PadIndex; HCAL (sheets) -> HCALIndex, with layer = first HCAL layer (20, information only).
+  ///        Pixels and the other HCAL designs have no index (use getVirtualInfo with the position): {-1, -1, -1}.
+  std::tuple<int /*layer*/, int /*row*/, int /*col*/> getLayerRowColFromIndex(Hit::Subsystem_t subsystem, int index) const;
+  /// \brief Full cell index of a subsystem from the (layer, index inside the layer) stored in a hit (see Hit.h):
+  ///        pads -> PadIndex absID; HCAL (sheets) -> SiPM index (= index inside the layer).
+  ///        Pixels and the other HCAL designs: -1 (no index, see getLayerRowColFromIndex). -1 if not valid.
+  int getIndexFromLayerAndIndexInLayer(Hit::Subsystem_t subsystem, int layer, int indexInLayer) const;
+  /// \brief SiPM (row, col) from the volume copy numbers of a fibre (sheet design, see Detector::CreatePitchAssembly)
+  /// \param fibreCopy copy number of the fibre volume inside its pitch:
+  ///                  fibreCopy = rowInPitch * nFibresPerRow + (fibre position counted from the beam-pipe end of a full-width plate)
+  ///                  with rowInPitch = 0 (lower row) or 1 (upper row) and nFibresPerRow = getHCALNumberOfFibresPerRow().
+  ///                  The shorter plates beside the beam pipe use the same positions (their fibres closest to the beam pipe
+  ///                  are simply missing), so every row has nFibresPerRow positions and the copy number is unique in the pitch.
+  /// \param pitchCopy copy number of its pitch assembly = pitch number counted from the bottom (0 .. getHCALNumberOfPitches()-1)
+  /// \param halfCopy  copy number of its half: 0 = left (x < 0), 1 = right (x > 0)
+  std::tuple<bool /*valid*/, int /*row*/, int /*col*/> getHCALRowColFromCopyNumbers(int fibreCopy, int pitchCopy, int halfCopy) const;
+
   float getDetectorOpeningRight() const { return mGlobal_DetectorOpening_Right; }
   float getDetectorOpeningLeft() const { return mGlobal_DetectorOpening_Left; }
 
@@ -240,6 +282,9 @@ class Geometry
   int mGlobal_HCAL_Tower_NY = 0;              // Number of HCAL towers on Y
   float mGlobal_HCAL_Pitch_Size = 0.0;        // Distance between two fibers
   float mGlobal_HCAL_BeamPipeHole_Size = 0.0; // beam pipe hole size in HCAL
+  float mGlobal_HCAL_SizeY = 100.8;           // total height of FOCAL-H (sheet design), independent of the ECAL size
+  int mGlobal_HCAL_FibresPerSiPM_X = 4;       // fibres per SiPM bundle in x
+  int mGlobal_HCAL_FibresPerSiPM_Y = 4;       // fibre rows per SiPM bundle in y
   HCALDesgin mHCALDesign = Sandwich;          // HCAL design type
 
   float mGlobal_FOCAL_Z0 = 0.0;

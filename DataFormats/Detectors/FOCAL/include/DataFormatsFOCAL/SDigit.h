@@ -1,3 +1,13 @@
+// Copyright 2019-2020 CERN and copyright holders of ALICE O2.
+// See https://alice-o2.web.cern.ch/copyright for details of the copyright holders.
+// All rights not expressly granted are reserved.
+//
+// This software is distributed under the terms of the GNU General Public
+// License v3 (GPL Version 3), copied verbatim in the file "COPYING".
+//
+// In applying this license CERN does not waive the privileges and immunities
+// granted to it by virtue of its status as an Intergovernmental Organization
+// or submit itself to any jurisdiction.
 #ifndef ALICEO2_FOCAL_SDIGIT_H_
 #define ALICEO2_FOCAL_SDIGIT_H_
 
@@ -26,9 +36,10 @@ using SDigitBase = o2::dataformats::TimeStamp<double>;
 /// - energy  : in eV (same unit as the FOCAL hits, Edep*1e9)
 /// - layer   : geometric layer numbering (0..19 ECAL pads + pixels, >= 20 HCAL)
 /// - row/col : pads -> grid of real pads (row 0..87, col 0..89, see FOCALBase/PadIndex.h)
-///             pixels/HCAL -> uniform virtual grid (see FOCALBase/VirtualCellIndex.h)
+///             HCAL (sheets) -> SiPM grid (see FOCALBase/HCALIndex.h); other HCAL designs -> uniform virtual grid
+///             pixels -> not produced yet (TODO)
 /// - index   : unique cell index inside its subsystem
-///             pads -> PadIndex absID, pixels/HCAL -> VirtualCellIndex cellID
+///             pads -> PadIndex absID, HCAL (sheets) -> HCALIndex SiPM index, other HCAL designs -> (layer*nRows+row)*nCols+col
 /// - subsystem: which index space the digit belongs to (same values as o2::focal::Hit::Subsystem_t)
 class SDigit : public SDigitBase
 {
@@ -79,7 +90,7 @@ class SDigit : public SDigitBase
   void setLayer(int16_t layer) { mLayer = layer; }
   int16_t getLayer() const { return mLayer; }
 
-  /// \brief Unique cell index inside the subsystem (pads: PadIndex absID, pixels/HCAL: VirtualCellIndex cellID)
+  /// \brief Unique cell index inside the subsystem (pads: PadIndex absID, HCAL sheets: HCALIndex SiPM index)
   void setIndex(int index) { mIndex = index; }
   int getIndex() const { return mIndex; }
 

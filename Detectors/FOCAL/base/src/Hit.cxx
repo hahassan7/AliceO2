@@ -13,9 +13,11 @@
 
 using namespace o2::focal;
 
-Hit::Hit(int primary, int trackID, int detID, Subsystem_t subsystem, double initialEnergy, const math_utils::Point3D<float>& pos,
-         double tof, double eLoss) : o2::BasicXYZEHit<float>(pos.X(), pos.Y(), pos.Z(), tof, eLoss, trackID, detID),
-                                     mSubSystem(subsystem),
+Hit::Hit(int primary, int trackID, int indexInLayer, int layer, Subsystem_t subsystem, double initialEnergy, const math_utils::Point3D<float>& pos,
+         double tof, double eLoss) : o2::BasicXYZEHit<float>(pos.X(), pos.Y(), pos.Z(), tof, eLoss, trackID, static_cast<unsigned short>(indexInLayer)),
+                                     mLayer(static_cast<uint8_t>(layer)),
+                                     mSubSystem(static_cast<uint8_t>(subsystem)),
+                                     mPrimary(primary),
                                      mInitialEnergy(initialEnergy)
 
 {
@@ -23,7 +25,7 @@ Hit::Hit(int primary, int trackID, int detID, Subsystem_t subsystem, double init
 
 bool Hit::operator==(const Hit& other) const
 {
-  return (GetDetectorID() == other.GetDetectorID()) && (GetTrackID() == other.GetTrackID() && mSubSystem == other.mSubSystem);
+  return (GetDetectorID() == other.GetDetectorID()) && (mLayer == other.mLayer) && (GetTrackID() == other.GetTrackID() && mSubSystem == other.mSubSystem);
 }
 
 bool Hit::operator<(const Hit& other) const
@@ -33,6 +35,9 @@ bool Hit::operator<(const Hit& other) const
   }
   if (mSubSystem != other.mSubSystem) {
     return mSubSystem < other.mSubSystem;
+  }
+  if (mLayer != other.mLayer) {
+    return mLayer < other.mLayer;
   }
   return GetDetectorID() < other.GetDetectorID();
 }
@@ -45,7 +50,7 @@ Hit& Hit::operator+=(const Hit& other)
 
 void Hit::printStream(std::ostream& stream) const
 {
-  stream << "FOCAL point: Track " << GetTrackID() << " in detector segment " << GetDetectorID()
+  stream << "FOCAL point: Track " << GetTrackID() << " in subsystem " << static_cast<int>(mSubSystem) << ", layer " << getLayer() << ", cell in layer " << getIndexInLayer()
          << " at position (" << GetX() << "|" << GetY() << "|" << GetZ() << "), energy loss " << GetEnergyLoss()
          << ", initial (parent) energy " << mInitialEnergy << " from primary " << mPrimary;
 }

@@ -2,7 +2,6 @@
 #include "DataFormatsFOCAL/SDigit.h"
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
-#include "FOCALBase/VirtualCellIndex.h"
 #include "MathUtils/Cartesian.h"
 #include "SimulationDataFormat/MCCompLabel.h"
 
@@ -33,58 +32,68 @@ std::vector<o2::focal::LabeledSDigit> SDigitizer::process(const std::vector<Hit>
   // different collisions / MC events must not be accumulated here (no double counting).
   mLabeledSDigits.clear();
 
-  // Hits are grouped per cell. The cell key combines the subsystem and the detector ID of the hit, because
-  // the detector IDs of the different subsystems are independent index spaces:
-  //  - FOCAL-E pads   : detID = pad absID = layer*nRows*nCols + row*nCols + col on the grid of REAL pads
+  // Hits are grouped per cell. The cell key combines the subsystem and the full cell index, because the indices of
+  // the different subsystems are independent index spaces:
+  //  - FOCAL-E pads   : pad absID = layer*nRows*nCols + row*nCols + col on the grid of REAL pads
   //                     (FOCALBase/PadIndex.h, layer = geometric numbering 0..19, pads + pixels)
-  //  - pixels and HCAL: detID = cell ID on the uniform virtual grid (FOCALBase/VirtualCellIndex.h)
-  //                     TODO: to be replaced by a physical indexing together with the pixel/HCAL digitization
-  auto cellKey = [](const o2::focal::Hit& hit) -> int64_t {
-    return (static_cast<int64_t>(hit.getSubsystem()) << 32) | static_cast<uint32_t>(hit.GetDetectorID());
+  //  - HCAL (sheets)  : SiPM index = row*nCols + col (FOCALBase/HCALIndex.h); layer = first HCAL layer (20), information only
+  //  - HCAL (other designs): cell from the hit position on the uniform virtual grid (getVirtualInfo, old way),
+  //                     index = (layer*nRows + row)*nCols + col
+  //  - pixels         : SKIPPED. TODO: pixels need their own indexing (ITS approach: chip ID + position) and digitization.
+  // The hit stores only (layer, index inside the layer), see Hit.h. This is the ONLY place where the full index
+  // (pads: absID, HCAL: SiPM index) is rebuilt; everything after the SDigitizer uses the full index.
+  struct Cell {
+    int index = -1, layer = -1, row = -1, col = -1;
+  };
+  const bool hcalSheets = (mGeometry->getHCALDesign() == Geometry::HCALDesgin::Sheets);
+  auto cellOf = [&](const o2::focal::Hit& hit) -> Cell {
+    Cell c;
+    if (hit.isHCALHit() && !hcalSheets) {
+      auto [inside, col, row, layer, segment] = mGeometry->getVirtualInfo(hit.GetX(), hit.GetY(), hit.GetZ());
+      auto [gridOK, nCols, nRows] = mGeometry->getVirtualNColRow(segment);
+      if (inside && gridOK) {
+        c = {(layer * nRows + row) * nCols + col, layer, row, col};
+      }
+      return c;
+    }
+    c.index = mGeometry->getIndexFromLayerAndIndexInLayer(hit.getSubsystem(), hit.getLayer(), hit.getIndexInLayer());
+    std::tie(c.layer, c.row, c.col) = mGeometry->getLayerRowColFromIndex(hit.getSubsystem(), c.index);
+    return c;
   };
 
   std::map<int64_t, std::map<int, std::vector<o2::focal::Hit>>> hitsPerTowerPerParticleID;
-
+  std::unordered_map<int64_t, Cell> cells;
   std::unordered_map<int64_t, std::vector<LabeledSDigit>> digitsPerTower;
 
-  for (auto hit : hits) {
-    hitsPerTowerPerParticleID[cellKey(hit)][hit.GetTrackID()].push_back(hit);
-  }
-
-  const auto padIndex = mGeometry->getPadIndex();
-
-  std::vector<o2::focal::Hit> SHits;
-  for (auto [towerID, hitsParticle] : hitsPerTowerPerParticleID) {
-    for (auto [partID, Hits] : hitsParticle) {
-      o2::focal::Hit SHit = std::accumulate(std::next(Hits.begin()), Hits.end(), Hits.front());
-      SHits.push_back(SHit);
+  for (const auto& hit : hits) {
+    if (hit.isPixelHit()) {
+      continue; // TODO: pixels (see above)
     }
-  }
-
-  for (auto hit : SHits) {
-
-    int tower = hit.GetDetectorID();
-    // (layer,row,col): pads -> grid of real pads, pixels / HCAL -> virtual grid (unchanged behaviour)
-    auto [layer, row, col] = hit.isPadHit() ? padIndex.getLayerRowColFromIndex(tower) : VirtualCellIndex::getLayerRowColFromIndex(tower);
-
-    if (layer < 0) {
-      LOG(warning) << "cell index out of range: " << tower << " (subsystem " << static_cast<int>(hit.getSubsystem()) << ")";
+    const Cell c = cellOf(hit);
+    if (c.layer < 0) {
+      LOG(warning) << "hit without valid cell: subsystem " << static_cast<int>(hit.getSubsystem()) << ", layer " << hit.getLayer() << ", index in layer " << hit.getIndexInLayer();
       continue;
     }
+    const int64_t key = (static_cast<int64_t>(hit.getSubsystem()) << 32) | static_cast<uint32_t>(c.index);
+    cells[key] = c;
+    hitsPerTowerPerParticleID[key][hit.GetTrackID()].push_back(hit);
+  }
 
-    double energy = hit.GetEnergyLoss();
+  for (const auto& [key, hitsParticle] : hitsPerTowerPerParticleID) {
+    const Cell& c = cells[key];
+    for (const auto& [partID, Hits] : hitsParticle) {
+      o2::focal::Hit hit = std::accumulate(std::next(Hits.begin()), Hits.end(), Hits.front()); // sum of the hits of one particle in this cell
 
-    SDigit digit(col, row, layer, hit.GetTime(), energy); // energy in eV
-    digit.setIndex(tower);                                 // unique cell index inside the subsystem (pads: absID, pixels/HCAL: cellID)
-    digit.setSubsystem(static_cast<SDigit::Subsystem_t>(hit.getSubsystem()));
+      SDigit digit(c.col, c.row, c.layer, hit.GetTime(), hit.GetEnergyLoss()); // energy in eV
+      digit.setIndex(c.index);                                                 // unique index inside the subsystem (pads: absID, HCAL: SiPM index)
+      digit.setSubsystem(static_cast<SDigit::Subsystem_t>(hit.getSubsystem()));
 
-    MCLabel label(hit.GetTrackID(), mCurrEvID, mCurrSrcID, false, 1.0);
-    if (digit.getEnergy() < __DBL_EPSILON__) {
-      label.setAmplitudeFraction(0);
+      MCLabel label(hit.GetTrackID(), mCurrEvID, mCurrSrcID, false, 1.0);
+      if (digit.getEnergy() < __DBL_EPSILON__) {
+        label.setAmplitudeFraction(0);
+      }
+      digitsPerTower[key].emplace_back(digit, label);
     }
-    LabeledSDigit d(digit, label);
-
-    digitsPerTower[cellKey(hit)].push_back(d);
   }
 
   for (auto [towerID, labeledDigits] : digitsPerTower) {

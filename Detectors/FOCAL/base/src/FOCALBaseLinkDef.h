@@ -20,4 +20,5 @@
 #pragma link C++ class o2::focal::Geometry + ;
 #pragma link C++ class o2::focal::Composition + ;
 #pragma link C++ class o2::focal::Hit + ;
+#pragma link C++ class std::vector < o2::focal::Hit> + ; // needed to read the hits (FOCHit branch) in ROOT macros
 #endif

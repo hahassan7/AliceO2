@@ -24,6 +24,16 @@ namespace o2::focal
 /// \ingroup FOCALbase
 /// \author Markus Fasel <markus.fasel@cern.ch>, Oak Ridge National Laboratory
 /// \since May 29, 2024
+///
+/// Cell index: the detector ID of the O2 base hit (GetDetectorID) is only 16 bits (max 65535), too small for the
+/// full FOCAL-E pad index (absID up to 158400). A hit therefore stores the cell as (layer, index inside the layer):
+///   - getIndexInLayer() = the 16-bit base detector ID:
+///       pads -> row * nCols + col (PadIndex::getIndexInLayer, max 7919),
+///       HCAL (sheets) -> SiPM index (HCALIndex, one layer, max 8000 with 3x3 bundles),
+///       pixels -> TRUNCATED to 16 bits (TODO: the pixel digitization must follow the ITS approach: chip ID + position);
+///   - getLayer() = layer (one byte): pads 0..19 (geometric numbering), HCAL 20.
+/// The full index (e.g. the pad absID) is rebuilt ONLY in the SDigitizer, with Geometry::getIndexFromLayerAndIndexInLayer.
+/// Digits always carry the full index.
 class Hit : public o2::BasicXYZEHit<float>
 {
  public:
@@ -77,12 +87,13 @@ class Hit : public o2::BasicXYZEHit<float>
   /// \brief Construction of the FOCAL hit with full information
   /// \param primary Index of the incoming primary particle
   /// \param trackID Index of the MC particle (also shower particle) responsible for the energy loss
-  /// \param detID Module index inside the subsystem
+  /// \param indexInLayer Index of the cell inside its layer (16 bits, stored as the detector ID of the base hit)
+  /// \param layer Layer of the cell
   /// \param subsystem FOCAL Subdetector (E-Pads, E-Pixels, HCAL)
   /// \param pos Geometric hit position (global coordintate system)
   /// \param tof Time-of-flight of the particle to the FOCAL
   /// \param eLoss Energy loss
-  Hit(int primary, int trackID, int detID, Subsystem_t subsystem, double initialEnergy, const math_utils::Point3D<float>& pos,
+  Hit(int primary, int trackID, int indexInLayer, int layer, Subsystem_t subsystem, double initialEnergy, const math_utils::Point3D<float>& pos,
       double tof, double eLoss);
 
   /// \brief Destructor
@@ -105,19 +116,28 @@ class Hit : public o2::BasicXYZEHit<float>
 
   /// \brief Get the type of the subsystem for which the hit was created
   /// \return Subsystem type
-  Subsystem_t getSubsystem() const { return mSubSystem; }
+  Subsystem_t getSubsystem() const { return static_cast<Subsystem_t>(mSubSystem); }
+
+  /// \brief Get the index of the cell INSIDE ITS LAYER (= GetDetectorID, 16 bits). NOT the full index (e.g. pad absID),
+  ///        use Geometry::getIndexFromLayerAndIndexInLayer for that.
+  /// \return Index inside the layer (pads: row*nCols+col, HCAL: SiPM index)
+  int getIndexInLayer() const { return GetDetectorID(); }
+
+  /// \brief Get the layer of the cell
+  /// \return Layer (pads 0..19, HCAL 20)
+  int getLayer() const { return mLayer; }
 
   /// \brief Check if the hit is a FOCAL-E pixel hit
   /// \return True if the hit is a FOCAL-E pixel hit, false otherwise
-  bool isPixelHit() const { return mSubSystem == Subsystem_t::EPIXELS; }
+  bool isPixelHit() const { return getSubsystem() == Subsystem_t::EPIXELS; }
 
   /// \brief Check if the hit is a FOCAL-E pad hit
   /// \return True if the hit is a FOCAL-E pad hit, false otherwise
-  bool isPadHit() const { return mSubSystem == Subsystem_t::EPADS; }
+  bool isPadHit() const { return getSubsystem() == Subsystem_t::EPADS; }
 
   /// \brief Check if the hit is a FOCAL-H hit
   /// \return True if the hit is a FOCAL-H, false otherwise
-  bool isHCALHit() const { return mSubSystem == Subsystem_t::HCAL; }
+  bool isHCALHit() const { return getSubsystem() == Subsystem_t::HCAL; }
 
   /// \brief Get index of the incomimg primary particle associated with the hit
   /// \return Associated primary particle
@@ -140,11 +160,12 @@ class Hit : public o2::BasicXYZEHit<float>
   void printStream(std::ostream& stream) const;
 
  private:
-  Subsystem_t mSubSystem = Subsystem_t::UNKNOWN; ///< FOCAL subdetector
-  int mPrimary = -1;                             ///< Primary particles at the origin of the hit
-  double mInitialEnergy = 0.;                    ///< Energy of the parent particle that entered the EMCAL
+  uint8_t mLayer = 0;                                                     ///< Layer of the cell (see class description)
+  uint8_t mSubSystem = static_cast<uint8_t>(Subsystem_t::UNKNOWN);        ///< FOCAL subdetector (Subsystem_t), one byte
+  int mPrimary = -1;                                                      ///< Primary particles at the origin of the hit
+  double mInitialEnergy = 0.;                                             ///< Energy of the parent particle that entered the EMCAL
 
-  ClassDefNV(Hit, 1);
+  ClassDefNV(Hit, 2);
 };
 
 /// @brief Sum operator, creating a new hit with the sum of the two energy losses

@@ -90,7 +90,6 @@ class Detector : public o2::base::DetImpl<Detector>
   /// \param trackID Index of the track in the MC stack
   /// \param primary Index of the primary particle in the MC stack
   /// \param initialEnergy Energy of the particle entering the FOCAL
-  /// \param detID Index of the detector (cell) for which the hit is created
   /// \param pos Position vector of the particle at the hit
   /// \param mom Momentum vector of the particle at the hit
   /// \param time Time of the hit
@@ -101,7 +100,8 @@ class Detector : public o2::base::DetImpl<Detector>
   /// \param col Column of the cell (used as lookup key together with row, layer, subsystem and track)
   /// \param row Row of the cell
   /// \param layer Layer of the cell
-  Hit* AddHit(int trackID, int primary, double initialEnergy, int detID, o2::focal::Hit::Subsystem_t subsystem,
+  /// \param indexInLayer Index of the cell inside its layer (16 bits, see Hit.h): pads row*nCols+col, HCAL SiPM index
+  Hit* AddHit(int trackID, int primary, double initialEnergy, int indexInLayer, o2::focal::Hit::Subsystem_t subsystem,
               const math_utils::Point3D<float>& pos, double time, double energyloss, int col, int row, int layer);
 
   /// \brief register container with hits

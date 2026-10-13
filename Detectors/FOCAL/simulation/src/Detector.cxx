@@ -14,13 +14,14 @@
 #include <TGeoVolume.h>
 #include <TGeoManager.h>
 #include <TGeoBBox.h>
+#include <TGeoTube.h>
 #include <TGeoCompositeShape.h>
+#include <cmath>
 
 #include <FairVolume.h>
 
 #include "DetectorsBase/Stack.h"
 #include "FOCALSimulation/Detector.h"
-#include "FOCALBase/VirtualCellIndex.h"
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
 
@@ -161,12 +162,21 @@ Bool_t Detector::ProcessHits(FairVolume* v)
   // return true;
 }
 
-Hit* Detector::AddHit(int trackID, int primary, double initialEnergy, int detID, o2::focal::Hit::Subsystem_t subsystem,
+Hit* Detector::AddHit(int trackID, int primary, double initialEnergy, int indexInLayer, o2::focal::Hit::Subsystem_t subsystem,
                       const math_utils::Point3D<float>& pos, double time, double eLoss, int col, int row, int layer)
 {
   LOG(debug3) << "Adding hit for track " << trackID << " with position (" << pos.X() << ", "
               << pos.Y() << ", " << pos.Z() << ")  with energy " << initialEnergy << " loosing " << eLoss;
-  mHits->emplace_back(primary, trackID, detID, subsystem, initialEnergy, pos, time, eLoss);
+  // The index inside the layer is stored in 16 bits (see Hit.h). Pads (max 7919) and HCAL sheets (max 8000) always fit,
+  // so this should never happen for them. The pixels and the other HCAL designs (virtual grid) do not need the index
+  // (it may be truncated without warning): pixels are skipped by the SDigitizer, the other HCAL designs use the position.
+  // TODO: pixels need their own indexing (ITS approach: chip ID + position) before they can be digitized.
+  const bool needsIndex = (subsystem == o2::focal::Hit::Subsystem_t::EPADS) ||
+                          (subsystem == o2::focal::Hit::Subsystem_t::HCAL && mGeometry->getHCALDesign() == Geometry::HCALDesgin::Sheets);
+  if (needsIndex && (indexInLayer < 0 || indexInLayer > 0xFFFF)) {
+    LOG(error) << "Hit index inside the layer does not fit in 16 bits: " << indexInLayer << " (subsystem " << static_cast<int>(subsystem) << ", layer " << layer << ")";
+  }
+  mHits->emplace_back(primary, trackID, indexInLayer, layer, subsystem, initialEnergy, pos, time, eLoss); // (layer, index inside the layer), see Hit.h
 
   // The lookup key uses the (col,row,layer) given by the caller. It is no longer recomputed here with
   // getVirtualInfo, because pad hits now use the real-pad grid (see ProcessHitsEPad).
@@ -713,7 +723,7 @@ TGeoVolumeAssembly* Detector::CreatePitchAssembly(double Lx,
   TGeoMedium* copper = gGeoManager->GetMedium(getMediumID(ID_COPPER));
   TGeoMedium* scint = gGeoManager->GetMedium(getMediumID(ID_SC));
 
-  TGeoVolumeAssembly* pitchAssembly = new TGeoVolumeAssembly("pitchAssembly");
+  TGeoVolumeAssembly* pitchAssembly = new TGeoVolumeAssembly(Form("pitchAssembly_%s", suffix.c_str()));
 
   // Hardcoded values for hole placement, to be set from outside
   float holeStart = 0.15; // cm
@@ -808,22 +818,31 @@ TGeoVolumeAssembly* Detector::CreatePitchAssembly(double Lx,
   // -----------------
   // Scintillator Fibers
   // -----------------
-  // Lower set of fibers
+  // Fibre copy numbers, used for the SiPM indexing (see Geometry::getHCALRowColFromCopyNumbers):
+  //   copy = rowInPitch * nFull + (fibre position counted from the beam-pipe end of a FULL-WIDTH plate)
+  // with rowInPitch = 0 (lower row) / 1 (upper row) and nFull = fibre positions per row of a full-width plate (124).
+  // Fibre i = 0 is at the OUTER edge (local -x) in both the full-width and the shorter (beam-pipe) plates, so its
+  // position from the beam pipe is nFull - 1 - i. In the shorter plates the positions closest to the beam pipe simply do
+  // not exist: the SiPM columns stay aligned with the other pitches and the empty ones are in the beam-pipe hole.
+  // The positions of the fibres are unchanged.
+  const int nFull = mGeometry->getHCALNumberOfFibresPerRow();
   TGeoVolume* fiber = gGeoManager->MakeTube("Fiber", scint, 0, fiber_radius, Lz / 2);
   fiber->SetLineColor(kBlue);
   mSensitive.push_back(fiber->GetName());
+
+  // Lower set of fibers (rowInPitch = 0)
   for (int i = 0; i < nholes; ++i) {
     float x_fiber = start_x + i * hole_spacing + hole_diameter / 2;
-    pitchAssembly->AddNode(fiber, i, new TGeoTranslation(x_fiber, Ly1 / 2 - fiber_radius + Ly1 / 2, zpos));
+    pitchAssembly->AddNode(fiber, nFull - 1 - i, new TGeoTranslation(x_fiber, Ly1 / 2 - fiber_radius + Ly1 / 2, zpos));
   }
 
-  // Upper set of fibers
+  // Upper set of fibers (rowInPitch = 1)
   for (int i = 0; i < nholes; ++i) {
     float x_fiber = start_x2 + i * hole_spacing + hole_diameter / 2;
     if (x_fiber > Lx / 2 - 0.05) {
       break;
     }
-    pitchAssembly->AddNode(fiber, i + nholes, new TGeoTranslation(x_fiber, Ly1 / 2 + Ly2 + Ly1 / 2 + Ly1 / 2 - fiber_radius + Ly1 / 2, zpos));
+    pitchAssembly->AddNode(fiber, nFull + (nFull - 1 - i), new TGeoTranslation(x_fiber, Ly1 / 2 + Ly2 + Ly1 / 2 + Ly1 / 2 - fiber_radius + Ly1 / 2, zpos));
   }
 
   return pitchAssembly;
@@ -834,31 +853,13 @@ void Detector::CreateHCALSheets()
 {
   TGeoVolumeAssembly* volHCAL = new TGeoVolumeAssembly("HCAL");
 
-  // Dimensions
-  double Lx = 49.81; // cm
-  double Ly1 = 0.20; // cm (sheets with holes)
-  double Ly2 = 0.15; // cm (full sheets)
-  double Lz = 110.0; // cm
+  // Dimensions, from the HCAL compositions of the geometry file (COMPOSITION_HCAL_S0/S1/S2)
+  double Lx = mGeometry->getHCALPlateWidth();            // cm, 49.81
+  double Ly1 = mGeometry->getHCALGroovedSheetThickness(); // cm (sheets with holes), 0.20
+  double Ly2 = mGeometry->getHCALFullSheetThickness();    // cm (full sheets), 0.15
+  double Lz = mGeometry->getHCALPlateLength();            // cm, 110
 
-  double fiber_radius = 0.05;
-
-  // HCal materials
-  int icomp = 0;
-  for (auto& comp : mGeoCompositions) {
-    Lz = comp->sizeZ();
-
-    if (comp->material() == "Scint") {
-      fiber_radius = comp->sizeX() / 2;
-    }
-    if (comp->material() == "CuHCAL" && icomp == 0) {
-      Lx = comp->sizeX();
-      Ly1 = comp->sizeY();
-    }
-    if (comp->material() == "CuHCAL" && icomp == 2) {
-      Ly2 = comp->sizeY();
-    }
-    icomp++;
-  }
+  double fiber_radius = mGeometry->getHCALFibreRadius(); // cm, 0.05
 
   double hole_diameter = fiber_radius * 2 + 0.01; // hole radius
   double hole_spacing = mGeometry->getHCALPitchSize();
@@ -868,11 +869,18 @@ void Detector::CreateHCALSheets()
   int nBeamPipeHoles = (int)((Lx - beamPipeHole / 2) / hole_spacing); // Number of beam pipe holes
 
   // Compute module height (two sheets with holes + two full sheets)
-  float pitch_height = Ly1 + Ly2 + Ly1 + Ly2;
+  float pitch_height = mGeometry->getHCALPitchHeight();
 
-  int totalNumberOfPitches = mGeometry->getHCALTowersInY() * 2;                  // Number of pitches in the whole HCAL
-  int numberOfPitchesBeamPipe = (int)((beamPipeHole + 0.001) / pitch_height);    // Number of pitches in the beam pipe region
+  int totalNumberOfPitches = mGeometry->getHCALNumberOfPitches();                // Number of pitches in the whole HCAL = GLOBAL_HCAL_SIZE_Y / pitch height
+  int numberOfPitchesBeamPipe = mGeometry->getHCALNumberOfPitchesBeamPipe();     // Number of pitches in the beam pipe region
   int numberofPitchesOnYaxis = (totalNumberOfPitches - numberOfPitchesBeamPipe); // Number of pitches in the HCAL ouside the beam pipe region
+
+  if (numberofPitchesOnYaxis <= 0 || numberofPitchesOnYaxis % 2 != 0 || std::abs(totalNumberOfPitches * pitch_height - mGeometry->getHCALSizeY()) > 0.01) {
+    LOG(fatal) << "HCAL sheets: GLOBAL_HCAL_SIZE_Y = " << mGeometry->getHCALSizeY() << " cm must be a whole number of pitches (" << pitch_height
+               << " cm), with the same number of pitches below and above the beam-pipe opening (" << numberOfPitchesBeamPipe << " pitches)";
+  }
+  LOG(info) << "HCAL sheets: " << totalNumberOfPitches << " pitches of " << pitch_height << " cm (height " << mGeometry->getHCALSizeY() << " cm), "
+            << numberOfPitchesBeamPipe << " beside the beam pipe, " << nholes << " fibres per row";
 
   TGeoVolumeAssembly* pitchAssembly = CreatePitchAssembly(Lx, Ly1, Ly2, Lz, hole_diameter, hole_spacing, nholes, fiber_radius, "Main");
   pitchAssembly->SetVisibility(true);
@@ -881,19 +889,23 @@ void Detector::CreateHCALSheets()
 
   TGeoVolumeAssembly* HalfHCAL = new TGeoVolumeAssembly("HalfHCAL");
 
+  // Copy number of every pitch = pitch number counted from the bottom (0 .. totalNumberOfPitches-1),
+  // for the full-width pitches AND the shorter pitches beside the beam pipe (used for the SiPM indexing).
+  // Positions are unchanged: the same number of full-width pitches below and above the beam-pipe opening.
+  const int nPitchesBelow = numberofPitchesOnYaxis / 2;
   for (int iPitch = 0; iPitch < numberofPitchesOnYaxis; iPitch++) {
     float placement = iPitch * pitch_height - pitch_height * (totalNumberOfPitches) / 2.0;
-    if (placement < -beamPipeHole / 2.0) {
-      HalfHCAL->AddNode(pitchAssembly, iPitch, new TGeoTranslation(0, placement, 0.));
-    } else {
+    int pitchNumber = iPitch;
+    if (iPitch >= nPitchesBelow) {
       placement += beamPipeHole;
-      HalfHCAL->AddNode(pitchAssembly, iPitch, new TGeoTranslation(0, placement, 0.));
+      pitchNumber += numberOfPitchesBeamPipe;
     }
+    HalfHCAL->AddNode(pitchAssembly, pitchNumber, new TGeoTranslation(0, placement, 0.));
   }
 
   for (int iPitch = 0; iPitch < numberOfPitchesBeamPipe; iPitch++) {
     float placement = iPitch * pitch_height - beamPipeHole / 2.0;
-    HalfHCAL->AddNode(beamPipeAssembly, iPitch, new TGeoTranslation(-beamPipeHole / 4, placement, 0.));
+    HalfHCAL->AddNode(beamPipeAssembly, nPitchesBelow + iPitch, new TGeoTranslation(-beamPipeHole / 4, placement, 0.));
   }
 
   HalfHCAL->SetVisibility(true);
@@ -1329,7 +1341,8 @@ bool Detector::ProcessHitsEPad(FairVolume* v)
     LOG(debug) << "Energy deposit in SiPad medium outside the pad layers: " << TVirtualMC::GetMC()->CurrentVolPath();
     return true;
   }
-  const int detID = mGeometry->getPadIndex().getIndexFromLayerRowCol(layer, row, col); // absID = layer*nRows*nCols + row*nCols + col, layer 0..19 (pads + pixels)
+  // the hit stores (layer, index inside the layer); the full absID = layer*nRows*nCols + row*nCols + col is rebuilt in the SDigitizer
+  const int indexInLayer = mGeometry->getPadIndex().getIndexInLayer(row, col);
 
   auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::EPADS);
   if (!currenthit) {
@@ -1338,10 +1351,10 @@ bool Detector::ProcessHitsEPad(FairVolume* v)
     // - Inside different cell
     // - First track of the event
     Double_t time = TVirtualMC::GetMC()->TrackTime() * 1e9; // time in ns
-    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and pad Col: " << col << " Row: " << row << " Layer: " << layer << " (absID " << detID << ")";
+    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and pad Col: " << col << " Row: " << row << " Layer: " << layer << " (index in layer " << indexInLayer << ")";
 
     /// check handling of primary particles
-    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, detID, o2::focal::Hit::Subsystem_t::EPADS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
+    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, indexInLayer, o2::focal::Hit::Subsystem_t::EPADS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
     o2stack->addHit(GetDetId());
   } else {
     LOG(debug3) << "Adding energy to the current hit";
@@ -1374,19 +1387,39 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
   float posX, posY, posZ;
   fMC->TrackPosition(posX, posY, posZ);
 
-  auto [indetector, col, row, layer, segment] = mGeometry->getVirtualInfo(posX, posY, posZ);
-
-  if (!indetector) {
-    // particle outside the detector
-    return true;
-  }
-
-  // Unique cell ID on the virtual grid (replaces the non-unique row * col + col; see FOCALBase/VirtualCellIndex.h)
-  // TODO: physical indexing for HCAL cells, to be done together with the HCAL digitization
-  const int detID = VirtualCellIndex::getIndexFromLayerRowCol(layer, row, col);
-  if (detID < 0) {
-    LOG(warning) << "HCAL cell outside the virtual-grid index range: layer " << layer << ", row " << row << ", col " << col;
-    return true;
+  int row = -1, col = -1, layer = -1, detID = -1;
+  if (mGeometry->getHCALDesign() == Geometry::HCALDesgin::Sheets) {
+    // Sheet design: SiPM (row, col) from the copy numbers of the fibre, its pitch and its half
+    // (see Detector::CreatePitchAssembly / CreateHCALSheets and FOCALBase/HCALIndex.h).
+    // layer: HCAL comes after the pad and pixel layers (index 20 = 21st layer); filled for information, NOT used for the index.
+    layer = mGeometry->getNumberOfPadLayers() + mGeometry->getNumberOfPixelLayers();
+    int fibreCopy = 0, pitchCopy = 0, halfCopy = 0;
+    fMC->CurrentVolID(fibreCopy);
+    fMC->CurrentVolOffID(1, pitchCopy);
+    fMC->CurrentVolOffID(2, halfCopy);
+    bool valid = false;
+    std::tie(valid, row, col) = mGeometry->getHCALRowColFromCopyNumbers(fibreCopy, pitchCopy, halfCopy);
+    if (valid) {
+      detID = mGeometry->getHCALIndex().getIndexFromRowCol(row, col);
+    }
+    if (detID < 0) {
+      LOG(warning) << "HCAL fibre without SiPM index: " << fMC->CurrentVolPath() << " (fibre " << fibreCopy << ", pitch " << pitchCopy << ", half " << halfCopy << ")";
+      return true;
+    }
+  } else {
+    // Other HCAL designs (sandwich, spaghetti): cell on the uniform virtual grid (old way). The index inside the layer
+    // may not fit in the 16 bits of the hit; it is not used afterwards: the SDigitizer recomputes the cell from the hit
+    // position with getVirtualInfo.
+    auto [indetector, vcol, vrow, vlayer, segment] = mGeometry->getVirtualInfo(posX, posY, posZ);
+    if (!indetector) {
+      // particle outside the detector
+      return true;
+    }
+    row = vrow;
+    col = vcol;
+    layer = vlayer;
+    [[maybe_unused]] auto [gridOK, nCols, nRows] = mGeometry->getVirtualNColRow(segment);
+    detID = row * nCols + col;
   }
 
   auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::HCAL);
@@ -1396,7 +1429,7 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     // - Inside different cell
     // - First track of the event
     Double_t time = fMC->TrackTime() * 1e9; // time in ns
-    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and cell Col: " << col << " Row: " << row << " segment: " << segment;
+    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and HCAL Col: " << col << " Row: " << row << " (detID " << detID << ")";
 
     /// check handling of primary particles
     AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, detID, o2::focal::Hit::Subsystem_t::HCAL, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
@@ -1439,13 +1472,11 @@ bool Detector::ProcessHitsEPix(FairVolume* v)
     return true;
   }
 
-  // Unique cell ID on the virtual grid (replaces the non-unique row * col + col; see FOCALBase/VirtualCellIndex.h)
-  // TODO: physical indexing for pixel cells, to be done together with the pixel digitization
-  const int detID = VirtualCellIndex::getIndexFromLayerRowCol(layer, row, col);
-  if (detID < 0) {
-    LOG(warning) << "Pixel cell outside the virtual-grid index range: layer " << layer << ", row " << row << ", col " << col;
-    return true;
-  }
+  // Pixels: cell on the uniform virtual grid (old way), index inside the layer = row * nCols + col. It does not fit in the
+  // 16 bits of the hit (truncated); pixel hits are skipped by the SDigitizer for now.
+  // TODO: pixels need their own indexing (ITS approach: chip ID + position) before they can be digitized.
+  [[maybe_unused]] auto [gridOK, nCols, nRows] = mGeometry->getVirtualNColRow(segment);
+  const int detID = row * nCols + col;
 
   auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::EPIXELS);
   if (!currenthit) {

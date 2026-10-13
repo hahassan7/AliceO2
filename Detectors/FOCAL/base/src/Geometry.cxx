@@ -18,6 +18,7 @@
 #include <fairlogger/Logger.h>
 
 #include "FOCALBase/Geometry.h"
+#include <cmath>
 
 using namespace o2::focal;
 
@@ -384,6 +385,21 @@ void Geometry::setParameters(std::string geometryfile)
       if (command.find("HCAL_BEAMPIPE") != std::string::npos) {
         mGlobal_HCAL_BeamPipeHole_Size = std::stof(tokens[1]);
         LOG(debug) << "The HCAL beam pipe openning : " << mGlobal_HCAL_BeamPipeHole_Size;
+      }
+
+      if (command == "GLOBAL_HCAL_SIZE_Y") {
+        mGlobal_HCAL_SizeY = std::stof(tokens[1]);
+        LOG(debug) << "HCAL total height : " << mGlobal_HCAL_SizeY;
+      }
+
+      if (command == "GLOBAL_HCAL_FIBRES_PER_SIPM_X") {
+        mGlobal_HCAL_FibresPerSiPM_X = std::stoi(tokens[1]);
+        LOG(debug) << "HCAL fibres per SiPM bundle in X : " << mGlobal_HCAL_FibresPerSiPM_X;
+      }
+
+      if (command == "GLOBAL_HCAL_FIBRES_PER_SIPM_Y") {
+        mGlobal_HCAL_FibresPerSiPM_Y = std::stoi(tokens[1]);
+        LOG(debug) << "HCAL fibre rows per SiPM bundle in Y : " << mGlobal_HCAL_FibresPerSiPM_Y;
       }
 
       if (command.find("PIX_OffsetX") != std::string::npos) {
@@ -1499,6 +1515,139 @@ bool Geometry::isPixelLayer(int layer) const
     }
   }
   return false;
+}
+
+//_________________________________________________________________________
+// FOCAL-H sheet design: dimensions from the HCAL compositions (S0 = sheet with grooves, S1 = fibre, S2 = full sheet).
+// NOTE: mHCalCompositionBase starts with 10 EMPTY compositions (hCalCompDummy(10) in setParameters, the ones of the file are
+// appended after them), so the compositions are looked up by their stack number, not by their position in the vector.
+const Composition* Geometry::getHCALComposition(int stack) const
+{
+  for (const auto& comp : mHCalCompositionBase) {
+    if (!comp.material().empty() && comp.stack() == stack) {
+      return &comp;
+    }
+  }
+  return nullptr;
+}
+double Geometry::getHCALPlateWidth() const { auto c = getHCALComposition(0); return c ? c->sizeX() : 0.; }
+double Geometry::getHCALPlateLength() const { auto c = getHCALComposition(0); return c ? c->sizeZ() : 0.; }
+double Geometry::getHCALGroovedSheetThickness() const { auto c = getHCALComposition(0); return c ? c->sizeY() : 0.; }
+double Geometry::getHCALFibreRadius() const { auto c = getHCALComposition(1); return c ? c->sizeX() / 2. : 0.; }
+double Geometry::getHCALFullSheetThickness() const { auto c = getHCALComposition(2); return c ? c->sizeY() : 0.; }
+
+//_________________________________________________________________________
+int Geometry::getHCALNumberOfPitches() const
+{
+  const double pitchHeight = getHCALPitchHeight();
+  if (pitchHeight <= 0) {
+    return 0;
+  }
+  return static_cast<int>(std::lround(mGlobal_HCAL_SizeY / pitchHeight));
+}
+
+//_________________________________________________________________________
+int Geometry::getHCALNumberOfPitchesBeamPipe() const
+{
+  const double pitchHeight = getHCALPitchHeight();
+  if (pitchHeight <= 0) {
+    return 0;
+  }
+  return static_cast<int>((mGlobal_HCAL_BeamPipeHole_Size + 0.001) / pitchHeight);
+}
+
+//_________________________________________________________________________
+int Geometry::getHCALNumberOfFibresPerRow() const
+{
+  if (mGlobal_HCAL_Pitch_Size <= 0) {
+    return 0;
+  }
+  return static_cast<int>(getHCALPlateWidth() / mGlobal_HCAL_Pitch_Size);
+}
+
+//_________________________________________________________________________
+HCALIndex Geometry::getHCALIndex() const
+{
+  const int nx = mGlobal_HCAL_FibresPerSiPM_X, ny = mGlobal_HCAL_FibresPerSiPM_Y;
+  if (nx <= 0 || ny <= 0) {
+    return HCALIndex();
+  }
+  // a partial bundle counts as one SiPM
+  const int nColsPerHalf = static_cast<int>(std::ceil(static_cast<double>(getHCALNumberOfFibresPerRow()) / nx));
+  const int nRows = static_cast<int>(std::ceil(static_cast<double>(getHCALNumberOfFibreRows()) / ny));
+  return HCALIndex(nRows, 2 * nColsPerHalf);
+}
+
+//_________________________________________________________________________
+std::tuple<int, int, int> Geometry::getLayerRowColFromIndex(Hit::Subsystem_t subsystem, int index) const
+{
+  switch (subsystem) {
+    case Hit::Subsystem_t::EPADS:
+      return getPadIndex().getLayerRowColFromIndex(index);
+    case Hit::Subsystem_t::HCAL:
+      if (mHCALDesign == HCALDesgin::Sheets) {
+        auto [row, col] = getHCALIndex().getRowColFromIndex(index);
+        if (row < 0) {
+          return {-1, -1, -1};
+        }
+        return {mNPadLayers + mNPixelLayers, row, col}; // HCAL = layer after the pad and pixel layers (21st layer, index 20)
+      }
+      return {-1, -1, -1}; // other HCAL designs: no index, the cell comes from getVirtualInfo(position)
+    default:
+      return {-1, -1, -1}; // pixels: no index yet (TODO: ITS approach)
+  }
+}
+
+//_________________________________________________________________________
+int Geometry::getIndexFromLayerAndIndexInLayer(Hit::Subsystem_t subsystem, int layer, int indexInLayer) const
+{
+  switch (subsystem) {
+    case Hit::Subsystem_t::EPADS:
+      return getPadIndex().getIndexFromLayerAndIndexInLayer(layer, indexInLayer);
+    case Hit::Subsystem_t::HCAL:
+      if (mHCALDesign == HCALDesgin::Sheets) {
+        return getHCALIndex().isValid(indexInLayer) ? indexInLayer : -1; // one HCAL layer: the SiPM index is the full index
+      }
+      return -1; // other HCAL designs: no index, the cell comes from getVirtualInfo(position)
+    default:
+      return -1; // pixels: no index yet (TODO: ITS approach)
+  }
+}
+
+//_________________________________________________________________________
+std::tuple<bool, int, int> Geometry::getHCALRowColFromCopyNumbers(int fibreCopy, int pitchCopy, int halfCopy) const
+{
+  const int nx = mGlobal_HCAL_FibresPerSiPM_X, ny = mGlobal_HCAL_FibresPerSiPM_Y;
+  const int nFibresPerRow = getHCALNumberOfFibresPerRow();
+  if (nx <= 0 || ny <= 0 || nFibresPerRow <= 0 || fibreCopy < 0 || pitchCopy < 0 || halfCopy < 0 || halfCopy > 1) {
+    return {false, -1, -1};
+  }
+  const int rowInPitch = fibreCopy / nFibresPerRow;                         // 0 = lower row, 1 = upper row of the pitch
+  const int fibreFromBeamPipe = fibreCopy % nFibresPerRow;                  // 0 = fibre position closest to the beam pipe
+  const int fibreRow = HCAL_FIBRE_ROWS_PER_PITCH * pitchCopy + rowInPitch; // 0 = bottom fibre row
+  const auto hcalIndex = getHCALIndex();
+  const int nColsPerHalf = hcalIndex.getNCols() / 2;
+
+  // =====================================================================================================================
+  // TODO (IMPORTANT, to be checked with the HCAL engineers): bundling of the fibres BESIDE THE BEAM-PIPE OPENING.
+  // Bundles are counted from the beam-pipe end of a FULL-WIDTH plate, so that the SiPM columns are the same in all pitches.
+  // The shorter plates beside the beam pipe miss the 10 (lower row) / 11 (upper row) fibre positions closest to the beam
+  // pipe (8.4 cm / 2 = 10.5 fibre pitches). With 4x4 bundles this gives in those rows:
+  //   bundles 0 and 1: no fibre (empty SiPM columns in the hole);
+  //   bundle 2: only positions 10, 11 (lower rows) and 11 (upper rows) -> a partial SiPM with 6 of 16 fibres;
+  //   bundles 3 ... : complete, aligned with the other pitches.
+  // Whether the real detector reads those 6 fibres with their own SiPM (as here), merges them into bundle 3, or does not
+  // read them out, must be confirmed by the engineers.
+  // =====================================================================================================================
+  const int bundle = fibreFromBeamPipe / nx; // SiPM counted from the beam pipe: full bundles first, partial one at the outer edge
+  const int row = fibreRow / ny;
+  // left half: col counts down towards the beam pipe; right half: col counts up away from it -> col 0 = left edge
+  const int col = (halfCopy == 0) ? (nColsPerHalf - 1 - bundle) : (nColsPerHalf + bundle);
+
+  if (rowInPitch >= HCAL_FIBRE_ROWS_PER_PITCH || !hcalIndex.isValid(row, col)) {
+    return {false, -1, -1};
+  }
+  return {true, row, col};
 }
 
 //_________________________________________________________________________
