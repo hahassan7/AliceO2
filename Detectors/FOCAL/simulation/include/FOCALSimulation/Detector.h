@@ -98,8 +98,11 @@ class Detector : public o2::base::DetImpl<Detector>
   /// \return Pointer to the current hit
   ///
   /// Internally adding hits coming from the same track
+  /// \param col Column of the cell (used as lookup key together with row, layer, subsystem and track)
+  /// \param row Row of the cell
+  /// \param layer Layer of the cell
   Hit* AddHit(int trackID, int primary, double initialEnergy, int detID, o2::focal::Hit::Subsystem_t subsystem,
-              const math_utils::Point3D<float>& pos, double time, double energyloss);
+              const math_utils::Point3D<float>& pos, double time, double energyloss, int col, int row, int layer);
 
   /// \brief register container with hits
   void Register() override;
@@ -144,7 +147,8 @@ class Detector : public o2::base::DetImpl<Detector>
   /// \param col Column of the cell
   /// \param row Row of the cell
   /// \param Layer Layer of cell
-  Hit* FindHit(int parentID, int col, int row, int layer);
+  /// \param subsystem Subsystem of the cell (pads, pixels and HCAL use different index spaces)
+  Hit* FindHit(int parentID, int col, int row, int layer, o2::focal::Hit::Subsystem_t subsystem);
 
  protected:
   /// \brief Creating detector materials for the FOCAL detector

@@ -39,14 +39,15 @@ class Hit : public o2::BasicXYZEHit<float>
   /// \struct HitID
   /// \brief Mapped information of a channel
   struct HitID {
-    int mParentID;   ///< parentID of the track creating this hit
-    uint8_t mRow;    ///< Row of the hit in the calorimeter
-    uint8_t mColumn; ///< Column of the hit in the calorimeter
-    uint8_t mLayer;  ///< Layer the was hit
+    int mParentID;      ///< parentID of the track creating this hit
+    uint16_t mRow;      ///< Row of the hit in the calorimeter (uint16: pixel/HCAL grids can exceed 255)
+    uint16_t mColumn;   ///< Column of the hit in the calorimeter
+    uint8_t mLayer;     ///< Layer the was hit
+    uint8_t mSubsystem; ///< Subsystem (EPADS/EPIXELS/HCAL), avoids collisions between the index spaces of different subsystems
 
     bool operator==(const HitID& other) const
     {
-      return mParentID == other.mParentID && mRow == other.mRow && mColumn == other.mColumn && mLayer == other.mLayer;
+      return mParentID == other.mParentID && mRow == other.mRow && mColumn == other.mColumn && mLayer == other.mLayer && mSubsystem == other.mSubsystem;
     }
     friend std::ostream& operator<<(std::ostream& stream, const Hit::HitID& channel);
   };
@@ -65,6 +66,7 @@ class Hit : public o2::BasicXYZEHit<float>
       boost::hash_combine(seed, s.mRow);
       boost::hash_combine(seed, s.mColumn);
       boost::hash_combine(seed, s.mLayer);
+      boost::hash_combine(seed, s.mSubsystem);
       return seed;
     }
   };

@@ -929,7 +929,7 @@ std::tuple<int, int, int, int, int, int, int> Geometry::getPadPositionId2RowColS
   int padid = (number & 0xfff);
   int stack = (number >> 12) & 0x000f;
   // lay = (number >> 16) & 0x00ff;
-  int lay = (number >> 16) & 0x000f;
+  int lay = (number >> 16) & 0x00ff; // 8 bits: geometric layers go up to 19 (0x000f truncated layers >= 16)
 
   // seg = fSegments[lay];
   auto [status, seg] = getVirtualSegmentFromLayer(lay); // NOTE: to be checked since this overrides the initialization above
@@ -1488,4 +1488,52 @@ int Geometry::getVirtualMaxLayerInSegment(int segment) const
     return -1;
   }
   return mVirtualSegmentComposition[segment].mMaxLayer;
+}
+
+//_________________________________________________________________________
+bool Geometry::isPixelLayer(int layer) const
+{
+  for (int iPix = 0; iPix < mNPixelLayers; iPix++) {
+    if (mPixelLayerLocations[iPix] == layer) {
+      return true;
+    }
+  }
+  return false;
+}
+
+//_________________________________________________________________________
+std::tuple<bool, int, int, int> Geometry::getPadRowColLayerFromCopyNumbers(int padCopy, int moduleCopy) const
+{
+  // Pad volume (EWSIPAD1), see Detector::CreateECALGeometry and Geometry::setParameters:
+  //   copy = 1 + id + (stack << 12) + (layer << 16)   [layer: geometric numbering, pads + pixels]
+  //   id   = ix + iy*NX + waferX*NX*NY + waferY*NXwafers*NX*NY
+  //   ix, waferX count along +x; iy, waferY count from the TOP of the module (see getGeoPadCenterLocal)
+  // Module volume (EMSC1/EMSC2): copy = 1 + moduleY * nModulesX + moduleX
+  if (padCopy <= 0 || moduleCopy <= 0) {
+    return {false, -1, -1, -1}; // e.g. the optional front pad layers (volSiPad) use negative copy numbers
+  }
+  const int number = padCopy - 1;
+  const int id = number & 0xfff;
+  const int layer = (number >> 16) & 0xff;
+  const int nx = mGlobal_PAD_NX, ny = mGlobal_PAD_NY, nwx = mGlobal_PAD_NX_Tower, nwy = mGlobal_PAD_NY_Tower;
+  if (nx <= 0 || ny <= 0 || nwx <= 0 || nwy <= 0 || mGlobal_Tower_NX <= 0) {
+    return {false, -1, -1, -1};
+  }
+  const int ix = id % nx;
+  const int iy = (id / nx) % ny;
+  const int waferX = (id / (nx * ny)) % nwx;
+  const int waferY = id / (nx * ny * nwx);
+  const int module = moduleCopy - 1;
+  const int moduleX = module % mGlobal_Tower_NX;
+  const int moduleY = module / mGlobal_Tower_NX;
+  if (layer >= mNPadLayers + mNPixelLayers || isPixelLayer(layer) || waferY >= nwy || moduleY >= mGlobal_Tower_NY) {
+    return {false, -1, -1, -1};
+  }
+  const auto padIndex = getPadIndex();
+  const int absID = padIndex.getIndexFromVolumeIndices(layer, moduleX, moduleY, waferX, waferY, ix, iy);
+  if (absID < 0) {
+    return {false, -1, -1, -1};
+  }
+  auto [padLayer, row, col] = padIndex.getLayerRowColFromIndex(absID);
+  return {true, padLayer, row, col};
 }
