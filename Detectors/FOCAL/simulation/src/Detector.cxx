@@ -20,6 +20,7 @@
 
 #include "DetectorsBase/Stack.h"
 #include "FOCALSimulation/Detector.h"
+#include "FOCALBase/VirtualCellIndex.h"
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
 
@@ -161,21 +162,22 @@ Bool_t Detector::ProcessHits(FairVolume* v)
 }
 
 Hit* Detector::AddHit(int trackID, int primary, double initialEnergy, int detID, o2::focal::Hit::Subsystem_t subsystem,
-                      const math_utils::Point3D<float>& pos, double time, double eLoss)
+                      const math_utils::Point3D<float>& pos, double time, double eLoss, int col, int row, int layer)
 {
   LOG(debug3) << "Adding hit for track " << trackID << " with position (" << pos.X() << ", "
               << pos.Y() << ", " << pos.Z() << ")  with energy " << initialEnergy << " loosing " << eLoss;
   mHits->emplace_back(primary, trackID, detID, subsystem, initialEnergy, pos, time, eLoss);
 
-  auto [isin, col, row, layer, segment] = mGeometry->getVirtualInfo(pos.X(), pos.Y(), pos.Z());
-  mHitIndexMapping.insert(std::pair<Hit::HitID, unsigned int>({trackID, uint8_t(row), uint8_t(col), uint8_t(layer)}, static_cast<unsigned int>(mHits->size() - 1)));
+  // The lookup key uses the (col,row,layer) given by the caller. It is no longer recomputed here with
+  // getVirtualInfo, because pad hits now use the real-pad grid (see ProcessHitsEPad).
+  mHitIndexMapping.insert(std::pair<Hit::HitID, unsigned int>({trackID, uint16_t(row), uint16_t(col), uint8_t(layer), uint8_t(subsystem)}, static_cast<unsigned int>(mHits->size() - 1)));
 
   return &(mHits->back());
 }
 
-Hit* Detector::FindHit(int parentID, int col, int row, int layer)
+Hit* Detector::FindHit(int parentID, int col, int row, int layer, o2::focal::Hit::Subsystem_t subsystem)
 {
-  Hit::HitID hitToFind{parentID, uint8_t(row), uint8_t(col), uint8_t(layer)};
+  Hit::HitID hitToFind{parentID, uint16_t(row), uint16_t(col), uint8_t(layer), uint8_t(subsystem)};
   auto found = mHitIndexMapping.find(hitToFind);
 
   if (found == mHitIndexMapping.end()) {
@@ -1313,24 +1315,33 @@ bool Detector::ProcessHitsEPad(FairVolume* v)
   float posX, posY, posZ;
   TVirtualMC::GetMC()->TrackPosition(posX, posY, posZ);
 
-  auto [indetector, col, row, layer, segment] = mGeometry->getVirtualInfo(posX, posY, posZ);
+  // Identify the pad from the volume copy numbers instead of the uniform virtual grid (getVirtualInfo):
+  // every 1x1 cm pad is its own volume (EWSIPAD1) placed inside a module volume (EMSC1/EMSC2).
+  // (layer,row,col) is the global grid of REAL pads (see FOCALBase/PadIndex.h): gaps, guard rings and
+  // the beam-pipe hole take no index, so row/col follow the physical pad positions.
+  int padCopy = 0, moduleCopy = 0;
+  TVirtualMC::GetMC()->CurrentVolID(padCopy);           // pad volume (EWSIPAD1)
+  TVirtualMC::GetMC()->CurrentVolOffID(1, moduleCopy);  // mother volume = module (EMSC1/EMSC2)
+  auto [isPad, layer, row, col] = mGeometry->getPadRowColLayerFromCopyNumbers(padCopy, moduleCopy);
 
-  if (!indetector) {
-    // particle outside the detector
+  if (!isPad) {
+    // not a pad of the pad layers (e.g. optional front pad layers volSiPad with negative copy numbers)
+    LOG(debug) << "Energy deposit in SiPad medium outside the pad layers: " << TVirtualMC::GetMC()->CurrentVolPath();
     return true;
   }
+  const int detID = mGeometry->getPadIndex().getIndexFromLayerRowCol(layer, row, col); // absID = layer*nRows*nCols + row*nCols + col, layer 0..19 (pads + pixels)
 
-  auto currenthit = FindHit(mCurrentParentID, col, row, layer);
+  auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::EPADS);
   if (!currenthit) {
     // Condition for new hit:
     // - Processing different partent track (parent track must be produced outside FOCAL)
     // - Inside different cell
     // - First track of the event
     Double_t time = TVirtualMC::GetMC()->TrackTime() * 1e9; // time in ns
-    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and cell Col: " << col << " Row: " << row << " segment: " << segment;
+    LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and pad Col: " << col << " Row: " << row << " Layer: " << layer << " (absID " << detID << ")";
 
     /// check handling of primary particles
-    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, row * col + col, o2::focal::Hit::Subsystem_t::EPADS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss);
+    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, detID, o2::focal::Hit::Subsystem_t::EPADS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
     o2stack->addHit(GetDetId());
   } else {
     LOG(debug3) << "Adding energy to the current hit";
@@ -1369,7 +1380,15 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     return true;
   }
 
-  auto currenthit = FindHit(mCurrentParentID, col, row, layer);
+  // Unique cell ID on the virtual grid (replaces the non-unique row * col + col; see FOCALBase/VirtualCellIndex.h)
+  // TODO: physical indexing for HCAL cells, to be done together with the HCAL digitization
+  const int detID = VirtualCellIndex::getIndexFromLayerRowCol(layer, row, col);
+  if (detID < 0) {
+    LOG(warning) << "HCAL cell outside the virtual-grid index range: layer " << layer << ", row " << row << ", col " << col;
+    return true;
+  }
+
+  auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::HCAL);
   if (!currenthit) {
     // Condition for new hit:
     // - Processing different partent track (parent track must be produced outside FOCAL)
@@ -1379,7 +1398,7 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and cell Col: " << col << " Row: " << row << " segment: " << segment;
 
     /// check handling of primary particles
-    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, row * col + col, o2::focal::Hit::Subsystem_t::HCAL, math_utils::Point3D<float>(posX, posY, posZ), time, eloss);
+    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, detID, o2::focal::Hit::Subsystem_t::HCAL, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
     o2stack->addHit(GetDetId());
   } else {
     LOG(debug3) << "Adding energy to the current hit";
@@ -1418,7 +1437,15 @@ bool Detector::ProcessHitsEPix(FairVolume* v)
     return true;
   }
 
-  auto currenthit = FindHit(mCurrentParentID, col, row, layer);
+  // Unique cell ID on the virtual grid (replaces the non-unique row * col + col; see FOCALBase/VirtualCellIndex.h)
+  // TODO: physical indexing for pixel cells, to be done together with the pixel digitization
+  const int detID = VirtualCellIndex::getIndexFromLayerRowCol(layer, row, col);
+  if (detID < 0) {
+    LOG(warning) << "Pixel cell outside the virtual-grid index range: layer " << layer << ", row " << row << ", col " << col;
+    return true;
+  }
+
+  auto currenthit = FindHit(mCurrentParentID, col, row, layer, o2::focal::Hit::Subsystem_t::EPIXELS);
   if (!currenthit) {
     // Condition for new hit:
     // - Processing different partent track (parent track must be produced outside FOCAL)
@@ -1428,7 +1455,7 @@ bool Detector::ProcessHitsEPix(FairVolume* v)
     LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and cell Col: " << col << " Row: " << row << " segment: " << segment;
 
     /// check handling of primary particles
-    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, row * col + col, o2::focal::Hit::Subsystem_t::EPIXELS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss);
+    AddHit(mCurrentParentID, mCurrentPrimaryID, mCurrentSuperparent->mEnergy, detID, o2::focal::Hit::Subsystem_t::EPIXELS, math_utils::Point3D<float>(posX, posY, posZ), time, eloss, col, row, layer);
     o2stack->addHit(GetDetId());
   } else {
     LOG(debug3) << "Adding energy to the current hit";

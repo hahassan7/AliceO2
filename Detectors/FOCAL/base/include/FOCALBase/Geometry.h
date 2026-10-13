@@ -19,6 +19,8 @@
 #include <tuple>
 
 #include "FOCALBase/Composition.h"
+#include "FOCALBase/PadIndex.h"
+#include "FOCALBase/VirtualCellIndex.h"
 
 namespace o2
 {
@@ -113,6 +115,26 @@ class Geometry
   int getNumberOfHCalLayers() const { return mNHCalLayers; }
   int getNumberOfLayers() const { return mNPadLayers + mNPixelLayers + mNHCalLayers; }
   int getNumberOfLayerSeg() const { return mLayerSeg; }
+
+  // ---- FOCAL-E pad indexing (global grid of real pads, see FOCALBase/PadIndex.h) ----
+  int getNumberOfPadsInSensorX() const { return mGlobal_PAD_NX; }         ///< pads per sensor (wafer) in x (9)
+  int getNumberOfPadsInSensorY() const { return mGlobal_PAD_NY; }         ///< pads per sensor (wafer) in y (8)
+  int getNumberOfSensorsInModuleX() const { return mGlobal_PAD_NX_Tower; } ///< sensors per module (tower) in x (5)
+  int getNumberOfSensorsInModuleY() const { return mGlobal_PAD_NY_Tower; } ///< sensors per module (tower) in y (1)
+  /// \brief Pad index helper configured with the dimensions of this geometry
+  ///
+  /// The layer numbering is the geometric one (pads + pixels, 0..19); pixel layers never contain pad digits.
+  PadIndex getPadIndex() const
+  {
+    return PadIndex(mNPadLayers + mNPixelLayers, mGlobal_Tower_NX, mGlobal_Tower_NY, mGlobal_PAD_NX_Tower, mGlobal_PAD_NY_Tower, mGlobal_PAD_NX, mGlobal_PAD_NY);
+  }
+  /// \brief Check whether an ECAL layer (geometric numbering, pads + pixels) is a pixel layer
+  bool isPixelLayer(int layer) const;
+  /// \brief Global pad (layer,row,col) from the volume copy numbers of the pad (EWSIPAD1) and of its module (EMSC1/EMSC2)
+  /// \param padCopy   copy number of the pad volume = 1 + id + (stack << 12) + (layer << 16)
+  /// \param moduleCopy copy number of the module volume = 1 + moduleY * nModulesX + moduleX
+  /// \return {valid, layer (geometric numbering 0..19), row, col}
+  std::tuple<bool /*valid*/, int /*layer*/, int /*row*/, int /*col*/> getPadRowColLayerFromCopyNumbers(int padCopy, int moduleCopy) const;
 
   double getFOCALSizeX() const;
   double getFOCALSizeY() const;

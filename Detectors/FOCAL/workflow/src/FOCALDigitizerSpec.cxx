@@ -1,6 +1,15 @@
+// Copyright 2019-2020 CERN and copyright holders of ALICE O2.
+// See https://alice-o2.web.cern.ch/copyright for details of the copyright holders.
+// All rights not expressly granted are reserved.
+//
+// This software is distributed under the terms of the GNU General Public
+// License v3 (GPL Version 3), copied verbatim in the file "COPYING".
+//
+// In applying this license CERN does not waive the privileges and immunities
+// granted to it by virtue of its status as an Intergovernmental Organization
+// or submit itself to any jurisdiction.
 
 #include "FOCALWorkflow/FOCALDigitizerSpec.h"
-#include "CommonConstants/Triggers.h"
 #include "Framework/ConfigParamRegistry.h"
 #include "Framework/ControlService.h"
 #include "Framework/DataProcessorSpec.h"
@@ -11,12 +20,17 @@
 #include "Steer/HitProcessingManager.h" // for DigitizationContext
 #include "TChain.h"
 #include <TGeoManager.h>
+#include <TString.h>
+#include <TSystem.h>
 
-#include "CommonDataFormat/EvIndex.h"
 #include "DetectorsCommonDataFormats/DetID.h"
 #include "DataFormatsParameters/GRPObject.h"
 #include "DataFormatsFOCAL/TriggerRecord.h"
-#include <Steer/MCKinematicsReader.h>
+#include "DataFormatsFOCAL/MCLabel.h"
+#include "SimulationDataFormat/MCTruthContainer.h"
+
+#include <map>
+#include <tuple>
 
 using namespace o2::framework;
 using SubSpecificationType = o2::framework::DataAllocator::SubSpecificationType;
@@ -32,7 +46,12 @@ void DigitizerSpec::initDigitizerTask(framework::InitContext& ctx)
     LOG(error) << "Geometry needs to be loaded before";
   }
 
-  auto geom = o2::focal::Geometry::getInstance(); 
+  // Use the same geometry description as the simulation (macro/build_geometry.C). Without a file,
+  // Geometry::getInstance() only sets default parameters (FOCAL_Z0) and the pad dimensions are all zero.
+  // TODO: make the geometry file configurable (same option as in the simulation)
+  TString geoFile = "$O2_ROOT/share/Detectors/Geometry/FOC/geometryFiles/geometry_Sheets.txt";
+  gSystem->ExpandPathName(geoFile);
+  auto geom = o2::focal::Geometry::getInstance(geoFile.Data());
 
   mSumDigitizer.setGeometry(geom);
 
@@ -45,122 +64,68 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
     return;
   }
 
-  if (!mIsConfigured) {
-    configure();
-    mIsConfigured = true;
-  }
-
-  //o2::focal::SimParam::Instance().printKeyValues(true, true); //FOCAL does not have SimParam.
-
   auto context = ctx.inputs().get<o2::steer::DigitizationContext*>("collisioncontext");
-
-  auto intRate = context->getDigitizerInteractionRate();
   context->initSimChains(o2::detectors::DetID::FOC, mSimChains);
 
-  if (mcReader == nullptr) {
-    mcReader = new o2::steer::MCKinematicsReader(context.get());
-  }
+  auto& timesview = context->getEventRecords();  // one interaction record per collision
+  auto& eventParts = context->getEventParts();   // MC events (signal, background, ...) of each collision
+  LOG(info) << "FOCAL digitizer: got " << timesview.size() << " collisions";
 
-  auto& timesview = context->getEventRecords();
-  LOG(debug) << "GOT " << timesview.size() << " COLLISSION TIMES";
-
-  if (timesview.size() == 0) {
-    return;
-  }
+  // Output containers for the whole time frame
+  std::vector<o2::focal::SDigit> digitsOut;
+  std::vector<o2::focal::TriggerRecord> triggerRecordsOut;
+  o2::dataformats::MCTruthContainer<o2::focal::MCLabel> labelsOut;
 
   TStopwatch timer;
   timer.Start();
 
-  auto& eventParts = context->getEventParts();
-
-  int collisionN = 0;
+  // Single loop over collisions.
+  // v0: every collision is treated as triggered (TODO: trigger selection, e.g. FIT minimum bias, and pile-up).
   for (int collID = 0; collID < timesview.size(); ++collID) {
 
-    if (intRate < 10000.) {
-      break;
-    }
-
-    collisionN++;
+    // Sum the digits of all MC events (parts) of this collision per cell.
+    // Key = (subsystem, cell index): the cell index (SDigit::getIndex) is unique inside each subsystem.
+    std::map<std::tuple<int, int>, o2::focal::LabeledSDigit> digitsInCollision;
 
     for (auto& part : eventParts[collID]) {
-
       mSumDigitizer.setCurrEvID(part.entryID);
       mSumDigitizer.setCurrSrcID(part.sourceID);
 
       mHits.clear();
       context->retrieveHits(mSimChains, "FOCHit", part.sourceID, part.entryID, &mHits);
+      LOG(debug) << "Collision " << collID << ", source " << part.sourceID << ", event " << part.entryID << ": " << mHits.size() << " hits";
 
-      std::vector<o2::focal::LabeledDigit> summedLabeledDigits;
-      std::vector<o2::focal::Digit> summedDigits;
-      if (mRunSDitizer) {
-        summedLabeledDigits = mSumDigitizer.process(mHits);
-        for (auto labeledsummeddigit : summedLabeledDigits) {
-          summedDigits.push_back(labeledsummeddigit.getDigit());
-        }
-      } else {
-        for (auto& hit : mHits) {
-          summedDigits.emplace_back(hit.GetDetectorID(), hit.GetZ(), hit.GetTime(), hit.GetEnergyLoss()); //hit.GetZ() is the layer
+      for (const auto& sdigit : mSumDigitizer.process(mHits)) {
+        auto key = std::make_tuple(int(sdigit.getSubsystem()), sdigit.getIndex());
+        auto found = digitsInCollision.find(key);
+        if (found == digitsInCollision.end()) {
+          digitsInCollision.emplace(key, sdigit);
+        } else {
+          found->second += sdigit; // same cell hit by several MC events of this collision: add energy and labels
         }
       }
     }
-  }
 
-  LOG(info) << " CALLING FOCAL DIGITIZATION ";
-  o2::dataformats::MCTruthContainer<o2::focal::MCLabel> labelAccum;
-
-  for (int collID = 0; collID < timesview.size(); ++collID) {
-
-    std::bitset<5> trigger{0x1}; 
-
-    if (!trigger.any()) {
-      continue;
-    }
-
-    LOG(debug) << "accept collision";
-
-    for (auto& part : eventParts[collID]) {
-
-      mSumDigitizer.setCurrEvID(part.entryID);
-      mSumDigitizer.setCurrSrcID(part.sourceID);
-
-      auto& mcEventHeader = mcReader->getMCEventHeader(part.sourceID, part.entryID);
-      mcEventHeader.print();
-
-      mHits.clear();
-      context->retrieveHits(mSimChains, "FOCHit", part.sourceID, part.entryID, &mHits);
-
-      LOG(info) << "For collision " << collID << " eventID " << part.entryID << " found " << mHits.size() << " hits ";
-
-      std::vector<o2::focal::LabeledDigit> summedLabeledDigits;
-      if (mRunSDitizer) {
-        summedLabeledDigits = mSumDigitizer.process(mHits);
-      } else {
-        for (auto& hit : mHits) {
-          o2::focal::MCLabel digitlabel(hit.GetTrackID(), part.entryID, part.sourceID, false, 1.);
-          if (hit.GetEnergyLoss() < __DBL_EPSILON__) {
-            digitlabel.setAmplitudeFraction(0);
-          }
-          summedLabeledDigits.emplace_back(hit.GetDetectorID(), hit.GetZ(), hit.GetTime(), hit.GetEnergyLoss(), digitlabel); //hit.GetZ() is the layer
-        }
+    // Append the digits of this collision to the output and create its trigger record
+    const int firstDigit = digitsOut.size();
+    for (const auto& [key, labeledDigit] : digitsInCollision) {
+      const int digitIndex = digitsOut.size();
+      digitsOut.push_back(labeledDigit.getSDigit());
+      for (const auto& label : labeledDigit.getLabels()) {
+        labelsOut.addElement(digitIndex, label);
       }
     }
+    const int nDigits = digitsOut.size() - firstDigit;
+    triggerRecordsOut.emplace_back(timesview[collID], firstDigit, nDigits); // all subsystems (range mAllData)
   }
 
-  std::vector<TriggerRecord> trgrecord; //creating trigger record vector
-   for (int collID = 0; collID < timesview.size(); ++collID) {
-    std::vector<o2::focal::Digit> allDigits = mSumDigitizer.getDigits(); //getting the digits of the current collision
-    int firstdigit = allDigits[0].getIndex(); //getting the index of the first digit
-    int ndigits = allDigits.size(); //getting the number of digits
-    trgrecord.emplace_back(timesview[collID], firstdigit, ndigits); //filling the trigger record vector
-  }
+  LOG(info) << "FOCAL digitizer: " << digitsOut.size() << " digits in " << triggerRecordsOut.size() << " trigger records";
 
-  ctx.outputs().snapshot(Output{"FOC", "DIGITS", 0}, mSumDigitizer.getDigits()); 
-  //ctx.outputs().snapshot(Output{"FOC", "TRGRDIG", 0}, mSumDigitizer.getTriggerRecords()); //mSumDigitizer.getTriggerRecords() is not defined in the code provided, so this line is commented out.
+  ctx.outputs().snapshot(Output{"FOC", "DIGITS", 0}, digitsOut);
+  ctx.outputs().snapshot(Output{"FOC", "TRGRDIG", 0}, triggerRecordsOut);
   if (ctx.outputs().isAllowed({"FOC", "DIGITSMCTR", 0})) {
-    ctx.outputs().snapshot(Output{"FOC", "DIGITSMCTR", 0}, mSumDigitizer.getMCLabels());
+    ctx.outputs().snapshot(Output{"FOC", "DIGITSMCTR", 0}, labelsOut);
   }
-  ctx.outputs().snapshot(Output{"FOC", "TRIGGERINPUT", 0}, trgrecord);
-
 
   const o2::parameters::GRPObject::ROMode roMode = o2::parameters::GRPObject::TRIGGERING;
   LOG(info) << "FOCAL: Sending ROMode= " << roMode << " to GRPUpdater";
@@ -172,36 +137,27 @@ void DigitizerSpec::run(framework::ProcessingContext& ctx)
   mFinished = true;
 }
 
-void DigitizerSpec::configure()
-{
-
-}
-
 o2::framework::DataProcessorSpec getFOCALDigitizerSpec(int channel, bool mctruth)
 {
   std::vector<OutputSpec> outputs;
   outputs.emplace_back("FOC", "DIGITS", 0, Lifetime::Timeframe);
-  //outputs.emplace_back("FOC", "TRGRDIG", 0, Lifetime::Timeframe);
+  outputs.emplace_back("FOC", "TRGRDIG", 0, Lifetime::Timeframe);
   if (mctruth) {
     outputs.emplace_back("FOC", "DIGITSMCTR", 0, Lifetime::Timeframe);
   }
   outputs.emplace_back("FOC", "ROMode", 0, Lifetime::Timeframe);
-  outputs.emplace_back("FOC", "TRIGGERINPUT", 0, Lifetime::Timeframe);
+  // Note: no "TRIGGERINPUT" output. In EMCAL it carries the EMCAL L0 trigger decisions to the CTP
+  // digitizer (that is what EMCAL's first collision loop computes); FOCAL is not a CTP input.
 
   std::vector<o2::framework::InputSpec> inputs;
   inputs.emplace_back("collisioncontext", "SIM", "COLLISIONCONTEXT", static_cast<SubSpecificationType>(channel), Lifetime::Timeframe);
-
 
   return DataProcessorSpec{
     "FOCALDigitizer",
     inputs,
     outputs,
     AlgorithmSpec{o2::framework::adaptFromTask<DigitizerSpec>()},
-    Options{
-      {"pileup", VariantType::Int, 1, {"whether to run in continuous time mode"}},
-      {"disable-dig", VariantType::Bool, false, {"Disable digitisation"}},
-      {"debug-stream", VariantType::Bool, false, {"Enable debug streaming"}}}
-  };
+    Options{}};
 }
 } // end namespace focal
 } // end namespace o2

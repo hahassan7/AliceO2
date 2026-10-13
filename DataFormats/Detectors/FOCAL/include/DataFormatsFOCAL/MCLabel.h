@@ -14,7 +14,7 @@ namespace focal
 class MCLabel : public o2::MCCompLabel
 {
  private:
-  double mAmplitudeFraction;
+  double mAmplitudeFraction = 0.; ///< Fraction of the digit amplitude (energy) carried by this MC particle
 
  public:
   MCLabel() = default;

@@ -3,7 +3,7 @@
 #include "FOCALWorkflow/FOCALDigitWriterSpec.h"
 #include "DPLUtils/MakeRootTreeWriterSpec.h"
 #include <SimulationDataFormat/MCTruthContainer.h>
-#include "DataFormatsFOCAL/Digit.h"
+#include "DataFormatsFOCAL/SDigit.h"
 #include <DataFormatsFOCAL/MCLabel.h>
 #include "DataFormatsFOCAL/TriggerRecord.h"
 
@@ -27,7 +27,7 @@ DataProcessorSpec getFOCALDigitWriterSpec(bool mctruth)
                                 "focaldigits.root",
                                 "o2sim",
                                 1,
-                                BranchDefinition<std::vector<o2::focal::Digit>>{InputSpec{"focaldigits", "FOC", "DIGITS"}, "FOCALDigit"},
+                                BranchDefinition<std::vector<o2::focal::SDigit>>{InputSpec{"focaldigits", "FOC", "DIGITS"}, "FOCALDigit"},
                                 BranchDefinition<std::vector<o2::focal::TriggerRecord>>{InputSpec{"trgrecorddigits", "FOC", "TRGRDIG"}, "FOCALDigitTRGR"},
                                 BranchDefinition<o2::dataformats::MCTruthContainer<o2::focal::MCLabel>>{InputSpec{"focaldigitlabels", "FOC", "DIGITSMCTR"}, "FOCALDigitMCTruth", mctruth ? 1 : 0})();
 }

@@ -26,7 +26,7 @@
 #pragma link C++ class o2::focal::PixelChipRecord + ;
 #pragma link C++ class o2::focal::TriggerRecord + ;
 #pragma link C++ class o2::focal::MCLabel + ;
-#pragma link C++ class o2::focal::Digit + ;
+#pragma link C++ class o2::focal::SDigit + ;
 
 #pragma link C++ class std::vector < o2::focal::Event> + ;
 #pragma link C++ class std::vector < o2::focal::PadLayerEvent> + ;
@@ -34,6 +34,9 @@
 #pragma link C++ class std::vector < o2::focal::PixelChip> + ;
 #pragma link C++ class std::vector < o2::focal::PixelChipRecord> + ;
 #pragma link C++ class std::vector < o2::focal::TriggerRecord> + ;
-#pragma link c++ class std::vector < o2::focal::Digit> + ;
+#pragma link C++ class std::vector < o2::focal::SDigit> + ;
+
+#include "SimulationDataFormat/MCTruthContainer.h"
+#pragma link C++ class o2::dataformats::MCTruthContainer < o2::focal::MCLabel> + ;
 
 #endif

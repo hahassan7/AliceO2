@@ -50,6 +50,9 @@ class TriggerRecord
   int getFirstPadEntry() const { return mPadDataRange.getFirstEntry(); }
   int getFirstPixelChipEntry() const { return mPixelChipRange.getFirstEntry(); }
   int getFirstPixelHitEntry() const { return mPixelHitRange.getFirstEntry(); }
+  /// \brief Range of ALL objects of this trigger (used by the simulation digits, which contain all subsystems)
+  int getFirstEntry() const { return mAllData.getFirstEntry(); }
+  int getNumberOfObjects() const { return mAllData.getEntries(); }
 
   void printStream(std::ostream& stream) const;
 
