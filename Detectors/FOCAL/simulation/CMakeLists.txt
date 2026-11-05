@@ -15,6 +15,7 @@ o2_add_library(FOCALSimulation
     src/SDigitizer.cxx
     src/HCALSimParam.cxx
     src/SiPMResponse.cxx
+    src/PadSimParam.cxx
     PUBLIC_LINK_LIBRARIES ROOT::TreePlayer O2::FOCALBase O2::DetectorsBase O2::SimConfig O2::SimulationDataFormat O2::Headers O2::DataFormatsFOCAL
     AliceO2::InfoLogger
     Microsoft.GSL::GSL)
@@ -25,7 +26,8 @@ o2_target_root_dictionary(
     include/FOCALSimulation/LabeledSDigit.h
     include/FOCALSimulation/SDigitizer.h
     include/FOCALSimulation/HCALSimParam.h
-    include/FOCALSimulation/SiPMResponse.h)
+    include/FOCALSimulation/SiPMResponse.h
+    include/FOCALSimulation/PadSimParam.h)
 
 o2_data_file(COPY geometryFiles  DESTINATION Detectors/Geometry/FOC/)
 o2_data_file(COPY data DESTINATION Detectors/FOC/simulation)
