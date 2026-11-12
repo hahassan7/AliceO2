@@ -22,4 +22,8 @@
 #pragma link C++ class o2::focal::SDigitizer + ;
 #pragma link C++ class std::vector < o2::focal::LabeledSDigit> + ;
 
+#pragma link C++ class o2::focal::HCALSimParam + ;
+#pragma link C++ class o2::conf::ConfigurableParamHelper < o2::focal::HCALSimParam> + ;
+#pragma link C++ class o2::focal::SiPMResponse + ;
+
 #endif
