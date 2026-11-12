@@ -43,12 +43,16 @@ SiPMSignal SiPMResponse::getResponse(double meanPe, double time) const
 {
   SiPMSignal signal;
 
+  // Use gRandom if no generator was set
+  TRandom* randomGenerator = mRandomGenerator ? mRandomGenerator : gRandom;
+
+
   // Photoelectron statistics and dark counts
-  double Npe = mRandomGenerator->Poisson(meanPe) + mRandomGenerator->Poisson(mMeanDarkCounts);
+  double Npe = randomGenerator->Poisson(meanPe) + randomGenerator->Poisson(mMeanDarkCounts);
 
   // Optical crosstalk inside SiPM
   // Each avalanche triggers ~mSiPMCrosstalk extra pixels
-  Npe = Npe + mRandomGenerator->Poisson(Npe * mSiPMCrosstalk);
+  Npe = Npe + randomGenerator->Poisson(Npe * mSiPMCrosstalk);
 
   // Pixel saturation
   // Mean number of fired pixels when Npe photoelectrons land at random on Npix pixels
@@ -69,7 +73,7 @@ SiPMSignal SiPMResponse::getResponse(double meanPe, double time) const
   return signal;
 }
 
-double SiPMResponse::getVisibleEnergy(double charge) const
+double SiPMResponse::getVisibleEnergyMeV(double charge) const
 {
   double firedPixels = charge / (mChargePerFiredPixel * mConveyorGain); // charge at SiPM output
   // lower limit to avoid log(0) and negative Evis

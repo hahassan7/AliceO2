@@ -67,14 +67,14 @@ class SiPMResponse
   /// \brief Charge -> visible energy
   /// \param Q Charge at the preamplifier input (pC)
   /// \return Visible energy (MeV)
-  double getVisibleEnergy(double Q) const;
+  double getVisibleEnergyMeV(double Q) const;
 
   static constexpr double kElectronCharge = 1.602176634e-7; // one electron (pC)
 
  private:
   TRandom* mRandomGenerator = nullptr; //! random generator (not owned)
   double mMeanDarkCounts = 0.;         // mu_dark = mDarkCountRate * mIntegrationWindow
-  double mChargePerFiredPixel = 0.;    // mConveyorGain * mSiPMGain * kElectronCharge (pC)
+  double mChargePerFiredPixel = 0.;    // mSiPMGain * kElectronCharge (pC)
 
   // Parameters from HCALSimParam (read in init())
   double mPhotoelectronsPerMeV = 0.; // mean p.e. per MeV of visible energy
