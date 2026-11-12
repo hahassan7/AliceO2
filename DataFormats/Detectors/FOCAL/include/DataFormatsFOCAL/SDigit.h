@@ -34,6 +34,7 @@ using SDigitBase = o2::dataformats::TimeStamp<double>;
 /// Energy deposited in one cell by one collision (sum of the hits). The electronics-level
 /// digit (ADC, TOA, TOT) is o2::focal::Digit, produced from the SDigits by the digitizer.
 /// - energy  : in eV (same unit as the FOCAL hits, Edep*1e9)
+///             for HCAL : visible energy after Birk's law and fiber attenuation have been applied (if configured)
 /// - layer   : geometric layer numbering (0..19 ECAL pads + pixels, >= 20 HCAL)
 /// - row/col : pads -> grid of real pads (row 0..87, col 0..89, see FOCALBase/PadIndex.h)
 ///             HCAL (sheets) -> SiPM grid (see FOCALBase/HCALIndex.h); other HCAL designs -> uniform virtual grid

@@ -35,7 +35,7 @@ class HCALSimParam : public o2::conf::ConfigurableParamHelper<HCALSimParam>
   void PrintStream(std::ostream& stream) const;
 
   // Fibre (applied at hit level in Detector::ProcessHitsHCAL)
-  bool mApplyBirks{true};       // apply Birks' law at hit level
+  bool mApplyBirks{false};      // apply Birks' law at hit level
   float mBirksConstant{0.0126}; // Birks constant kB (cm/MeV) - polystyrene 0.126 mm/MeV
   float mAttenuationLength{0.}; // fibre attenuation length (cm), 0 = off - local sim uses 270 cm currently
 

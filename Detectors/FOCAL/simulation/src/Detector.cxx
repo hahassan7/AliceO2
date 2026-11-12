@@ -24,6 +24,7 @@
 #include "FOCALSimulation/Detector.h"
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
+#include "FOCALSimulation/HCALSimParam.h"
 
 using namespace o2::focal;
 
@@ -1373,6 +1374,24 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     return false; // only process hits which actually deposit some energy in the FOCAL
   }
 
+  // Apply Birk's law for charged particels when enabled in configuration file
+  const auto& par = o2::focal::HCALSimParam::Instance();
+  if (par.mApplyBirks && fMC->TrackCharge() != 0 && fMC->TrackStep() > 0) {
+    double dEdx = fMC->Edep() * 1e3 / fMC->TrackStep(); // MeV/cm (step length in cm)
+    eloss /= (1. + par.mBirksConstant * dEdx);          // kB in cm/MeV
+  }
+
+  float posX, posY, posZ;
+  fMC->TrackPosition(posX, posY, posZ);
+
+  // Apply fiber attenuation when enabled in configuration file
+  if (par.mAttenuationLength > 0) {
+    // Distance along z from the hit's position in z to the back face of the HCAL
+    double HCALBackZ = mGeometry->getFOCALZ0() + (mGeometry->getFOCALSizeZ() / 2 - mGeometry->getHCALSizeZ() / 2) + (mGeometry->getHCALSizeZ() / 2);
+    double d = HCALBackZ - posZ;
+    eloss *= std::exp(-d / par.mAttenuationLength);
+  }
+
   // In case of new parent track create new track reference
   auto o2stack = static_cast<o2::data::Stack*>(fMC->GetStack());
   if (!mCurrentSuperparent->mHasTrackReference) {
@@ -1383,9 +1402,6 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     o2stack->addTrackReference(trackref);
     mCurrentSuperparent->mHasTrackReference = true;
   }
-
-  float posX, posY, posZ;
-  fMC->TrackPosition(posX, posY, posZ);
 
   int row = -1, col = -1, layer = -1, detID = -1;
   if (mGeometry->getHCALDesign() == Geometry::HCALDesgin::Sheets) {
