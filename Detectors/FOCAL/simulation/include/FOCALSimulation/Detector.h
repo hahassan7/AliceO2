@@ -18,6 +18,7 @@
 #include "FOCALBase/Hit.h"
 #include "FOCALBase/Geometry.h"
 #include "TGeoManager.h"
+#include "FOCALSimulation/HCALSimParam.h"
 
 class FairVolume;
 
