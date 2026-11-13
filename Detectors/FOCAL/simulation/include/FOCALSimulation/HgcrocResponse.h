@@ -26,6 +26,12 @@ class HgcrocResponse
  public:
   static constexpr int NASICS = 18; // test-beam 2023 setup
   static constexpr int NCHANNELS = 72;
+  static constexpr int ADCMAX = 1023; // 10-bit ADC
+
+  // sanity windows for the calibration fits (from the test-beam analysis)
+  static constexpr double ADCSLOPE_MIN = 2500., ADCSLOPE_MAX = 4500.;
+  static constexpr double TOTSLOPE_MIN = 200., TOTSLOPE_MAX = 550.;
+  static constexpr double TOTSLOPEHIGH_MIN = 150., TOTSLOPEHIGH_MAX = 300.;
 
   // container for the calibration parameters of each pad
   struct ChannelCalib {
@@ -65,6 +71,8 @@ class HgcrocResponse
  private:
   void loadCalibLowRange(const std::string& filepath);
   void loadCalibHighRange(const std::string& filepath);
+  void validateCalibParams();
+  void regularizeBadCalibParams();
 
   std::array<std::array<ChannelCalib, NCHANNELS>, NASICS> mCalibParams;
   bool mInitialized = false;
