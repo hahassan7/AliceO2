@@ -28,18 +28,18 @@ void PadSimParam::PrintStream(std::ostream& stream) const
   stream << "FOCAL pad simulation parameters:"
          << "\n FOCAL::PadSimParam::mEnergyPerPair = " << mEnergyPerPair
          << "\n FOCAL::PadSimParam::mCCE = " << mCCE
-         << "\n FOCAL::PadSimParam::mCalibFileLow =  " << mCalibFileLow
-         << "\n FOCAL::PadSimParam::mCalibFileHigh =  " << mCalibFileHigh
+         << "\n FOCAL::PadSimParam::mCalibFileLowRange = " << mCalibFileLowRange
+         << "\n FOCAL::PadSimParam::mCalibFileHighRange = " << mCalibFileHighRange
          << "\n FOCAL::PadSimParam::mADCTOTGap = " << mADCTOTGap
          << "\n FOCAL::PadSimParam::mTOTTransitionLow = " << mTOTTransitionLow
          << "\n FOCAL::PadSimParam::mTOTTransitionHigh = " << mTOTTransitionHigh
          << "\n FOCAL::PadSimParam::mNoiseADC = " << mNoiseADC
-         << "\n FOCAL::PadSimParam::mCMNADC =  " << mCMNADC
-         << "\n FOCAL::PadSimParam::mTOTSmear =  " << mTOTSmear
-         << "\n FOCAL::PadSimParam::mTOAThreshold =  " << mTOAThreshold
-         << "\n FOCAL::PadSimParam::mReadoutAllSensors =  " << (mReadoutAllSensors ? "yes" : "no")
-         << "\n FOCAL::PadSimParam::mUseBadChannels =  " << (mUseBadChannels ? "yes" : "no")
-         << "\n FOCAL::PadSimParam::mDebugStream =  " << (mDebugStream ? "yes" : "no") << "\n";
+         << "\n FOCAL::PadSimParam::mCMNADC = " << mCMNADC
+         << "\n FOCAL::PadSimParam::mTOTSmear = " << mTOTSmear
+         << "\n FOCAL::PadSimParam::mTOAThreshold = " << mTOAThreshold
+         << "\n FOCAL::PadSimParam::mReadoutAllSensors = " << (mReadoutAllSensors ? "yes" : "no")
+         << "\n FOCAL::PadSimParam::mUseBadChannels = " << (mUseBadChannels ? "yes" : "no")
+         << "\n FOCAL::PadSimParam::mDebugStream = " << (mDebugStream ? "yes" : "no") << "\n";
 }
 
 } // namespace o2::focal
