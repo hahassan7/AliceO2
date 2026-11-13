@@ -73,6 +73,7 @@ class HgcrocResponse
   void loadCalibHighRange(const std::string& filepath);
   void validateCalibParams();
   void regularizeBadCalibParams();
+  void computeDerivedParams();
 
   std::array<std::array<ChannelCalib, NCHANNELS>, NASICS> mCalibParams;
   bool mInitialized = false;

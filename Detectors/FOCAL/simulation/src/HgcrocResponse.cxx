@@ -41,6 +41,7 @@ void HgcrocResponse::init()
   loadCalibHighRange(highRangeCalibData.Data());
   validateCalibParams();
   regularizeBadCalibParams();
+  computeDerivedParams();
 
   mInitialized = true;
 }
@@ -249,6 +250,21 @@ void HgcrocResponse::regularizeBadCalibParams()
       regularizeGroup(asic, half, BadADCFit, adcParams);
       regularizeGroup(asic, half, BadTOTLowFit, totLowParams);
       regularizeGroup(asic, half, BadTOTHighFit, totHighParams);
+    }
+  }
+}
+
+void HgcrocResponse::computeDerivedParams()
+{
+  const PadSimParam& pars = PadSimParam::Instance();
+
+  for (auto& row : mCalibParams) {
+    for (auto& c : row) {
+      c.gain = c.adcSlope;
+      c.qLin = c.adcHigherFitRange;
+      c.adcMargin = ADCMAX - c.adcConst - c.gain * c.qLin;
+      c.qSat = c.qLin + 2 * c.adcMargin / c.gain;
+      c.qTOT = c.qSat + pars.getADCTOTGap();
     }
   }
 }
