@@ -13,6 +13,7 @@
 #define ALICEO2_FOCAL_HGCROCRESPONSE_H_
 
 #include <array>
+#include <string>
 #include <cstdint>
 
 namespace o2
@@ -62,6 +63,9 @@ class HgcrocResponse
   const std::array<std::array<ChannelCalib, NCHANNELS>, NASICS>& getCalibParams() const { return mCalibParams; }
 
  private:
+  void loadCalibLowRange(const std::string& filepath);
+  void loadCalibHighRange(const std::string& filepath);
+
   std::array<std::array<ChannelCalib, NCHANNELS>, NASICS> mCalibParams;
   bool mInitialized = false;
 };
