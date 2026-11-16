@@ -202,6 +202,8 @@ class Detector : public o2::base::DetImpl<Detector>
 
   Geometry* mGeometry; //!<! Geometry pointer
 
+  double mHCALBackZ = 0; //!<! Z position of the back face of the HCAL
+
   int mMedSensHCal = 0;    //!<! Sensitive Medium for HCal
   int mMedSensECalPad = 0; //!<! Sensitive Medium for ECal Pads
   int mMedSensECalPix = 0; //!<! Sensitive Medium for ECal Pixels
