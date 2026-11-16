@@ -35,9 +35,10 @@ class HCALSimParam : public o2::conf::ConfigurableParamHelper<HCALSimParam>
   void PrintStream(std::ostream& stream) const;
 
   // Fibre (applied at hit level in Detector::ProcessHitsHCAL)
-  bool mApplyBirks{true};       // apply Birks' law at hit level
+  bool mApplyBirks{false};      // apply Birks' law at hit level
   float mBirksConstant{0.0126}; // Birks constant kB (cm/MeV) - polystyrene 0.126 mm/MeV
   float mAttenuationLength{0.}; // fibre attenuation length (cm), 0 = off - local sim uses 270 cm currently
+  float mFibreLightSpeed{0.};   // speed of light in the fibre (cm/ns), 0 = off - placeholder, check the exact value
 
   // SiPM (using datasheet for Hamamatsu S14160-6010PS)
   float mPhotoelectronsPerMeV{64.}; // mean p.e. per MeV of visible energy - placeholder
@@ -47,6 +48,7 @@ class HCALSimParam : public o2::conf::ConfigurableParamHelper<HCALSimParam>
   float mDarkCountRate{3.e6};       // dark count rate (Hz) - datasheet
   float mIntegrationWindow{25.};    // window in which dark counts add to the signal (ns)
   float mBoardCrosstalk{0.};        // fraction of mu leaking to each of the 4 neighbouring towers - currently placeholder 0, needs lab tests
+  float mDistToSiPM{0.5};           // distance in cm from the end of HCAL to the SiPM - placeholder, check the exact distance
 
   // Pulse shape, single collision
   float mPulseRiseTime{15.}; // SiPM pulse rise time (ns) - local sim, investiagion continuing

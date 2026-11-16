@@ -46,10 +46,6 @@ SiPMSignal SiPMResponse::getResponse(double meanPe, double time) const
   // Use gRandom if no generator was set
   TRandom* randomGenerator = mRandomGenerator ? mRandomGenerator : gRandom;
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 4c3caaebb5 (Addressing PR comments on SiPMResponse class)
   // Photoelectron statistics and dark counts
   double Npe = randomGenerator->Poisson(meanPe) + randomGenerator->Poisson(mMeanDarkCounts);
 

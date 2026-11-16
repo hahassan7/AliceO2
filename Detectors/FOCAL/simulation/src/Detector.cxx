@@ -24,6 +24,7 @@
 #include "FOCALSimulation/Detector.h"
 #include "FOCALBase/Geometry.h"
 #include "FOCALBase/Hit.h"
+#include "FOCALSimulation/HCALSimParam.h"
 
 using namespace o2::focal;
 
@@ -62,6 +63,7 @@ Detector::Detector(const Detector& rhs)
   //  mSensitiveECALPad = rhs.mSensitiveECALPad;
   //  mSensitiveECALPix = rhs.mSensitiveECALPix;
   mVolumeIDScintillator = rhs.mVolumeIDScintillator;
+  mHCALBackZ = rhs.mHCALBackZ;
 }
 
 Detector::~Detector()
@@ -105,6 +107,9 @@ void Detector::InitializeO2Detector()
   mMedSensHCal = getMediumID(ID_SC);
   mMedSensECalPad = getMediumID(ID_SIPAD);
   mMedSensECalPix = getMediumID(ID_SIPIX);
+
+  // Z position of the back of HCAL in global coordinates, used in ProcessHitsHCAL
+  mHCALBackZ = mGeometry->getFOCALZ0() + (mGeometry->getFOCALSizeZ() / 2 - mGeometry->getHCALSizeZ() / 2) + (mGeometry->getHCALSizeZ() / 2);
 }
 
 Bool_t Detector::ProcessHits(FairVolume* v)
@@ -1373,6 +1378,24 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     return false; // only process hits which actually deposit some energy in the FOCAL
   }
 
+  // Apply Birks' law for charged particels when enabled in configuration file
+  const auto& par = o2::focal::HCALSimParam::Instance();
+  if (par.mApplyBirks && fMC->TrackCharge() != 0 && fMC->TrackStep() > 0) {
+    double dEdx = fMC->Edep() * 1e3 / fMC->TrackStep(); // MeV/cm (step length in cm)
+    eloss /= (1. + par.mBirksConstant * dEdx);          // kB in cm/MeV
+  }
+
+  float posX, posY, posZ;
+  fMC->TrackPosition(posX, posY, posZ);
+
+  // Distance from the hit's z position to the SiPM
+  double d = (mHCALBackZ + par.mDistToSiPM) - posZ;
+
+  // Apply fiber attenuation when enabled in configuration file
+  if (par.mAttenuationLength > 0) {
+    eloss *= std::exp(-d / par.mAttenuationLength);
+  }
+
   // In case of new parent track create new track reference
   auto o2stack = static_cast<o2::data::Stack*>(fMC->GetStack());
   if (!mCurrentSuperparent->mHasTrackReference) {
@@ -1383,9 +1406,6 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     o2stack->addTrackReference(trackref);
     mCurrentSuperparent->mHasTrackReference = true;
   }
-
-  float posX, posY, posZ;
-  fMC->TrackPosition(posX, posY, posZ);
 
   int row = -1, col = -1, layer = -1, detID = -1;
   if (mGeometry->getHCALDesign() == Geometry::HCALDesgin::Sheets) {
@@ -1428,7 +1448,13 @@ bool Detector::ProcessHitsHCAL(FairVolume* v)
     // - Processing different partent track (parent track must be produced outside FOCAL)
     // - Inside different cell
     // - First track of the event
+
     Double_t time = fMC->TrackTime() * 1e9; // time in ns
+    // if the speed of light in the fiber is set in the parameters file, calculate the time it takes the light to reach the SiPM at the back of the detector
+    if (par.mFibreLightSpeed > 0) {
+      time += d / par.mFibreLightSpeed;
+    }
+
     LOG(debug3) << "Adding new hit for parent " << mCurrentParentID << " and HCAL Col: " << col << " Row: " << row << " (detID " << detID << ")";
 
     /// check handling of primary particles
