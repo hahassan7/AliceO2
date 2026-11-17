@@ -136,39 +136,39 @@ void HgcrocResponse::loadCalibHighRange(const std::string& filepath)
   }
 }
 
-// validates whether calibration parameters are valid or nonsense and sets badMask accordingly
+// validates whether calibration parameters are valid or nonsense and sets badFitMask accordingly
 void HgcrocResponse::validateCalibParams()
 {
   for (int asic = 0; asic < NASICS; ++asic) {
     for (int ch = 0; ch < NCHANNELS; ++ch) {
       auto& c = mCalibParams[asic][ch];
-      c.badMask = 0;
+      c.badFitMask = 0;
 
       if (!c.seenLow) {
-        c.badMask |= BadADCFit | BadTOTLowFit;
+        c.badFitMask |= BadADCFit | BadTOTLowFit;
         LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                      << " did not receive calibration parameters for low charge injection fit, half mean will be used";
       } else {
         const double adcMargin = ADCMAX - c.adcConst - c.adcSlope * c.adcHigherFitRange;
         if (c.adcSlope < ADCSLOPE_MIN || c.adcSlope > ADCSLOPE_MAX || adcMargin <= 0) {
-          c.badMask |= BadADCFit;
+          c.badFitMask |= BadADCFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ADC fit (slope = " << c.adcSlope << ", adcMargin = " << adcMargin << "), will be replaced by the half mean";
         }
         if (c.totSlope < TOTSLOPE_MIN || c.totSlope > TOTSLOPE_MAX) {
-          c.badMask |= BadTOTLowFit;
+          c.badFitMask |= BadTOTLowFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ToT low charge injection fit parameters (slope = " << c.totSlope << "), will be replaced by the half mean";
         }
       }
 
       if (!c.seenHigh) {
-        c.badMask |= BadTOTHighFit;
+        c.badFitMask |= BadTOTHighFit;
         LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                      << " did not receive calibration parameters for high charge injection fit, half mean will be used";
       } else {
         if (c.totSlopeHigh < TOTSLOPEHIGH_MIN || c.totSlopeHigh > TOTSLOPEHIGH_MAX) {
-          c.badMask |= BadTOTHighFit;
+          c.badFitMask |= BadTOTHighFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ToT high charge injection fit parameters (slope = " << c.totSlopeHigh << "), will be replaced by the half mean";
         }
@@ -192,14 +192,14 @@ void HgcrocResponse::regularizeBadCalibParams()
 
     int nGood = 0;
     std::vector<double> meanParams(params.size(), 0.);
-    std::vector<int> badChannels;
+    std::vector<int> badFitChannels;
 
     // calculating means over the good channels
     for (int ch = firstChannel; ch < lastChannel; ++ch) {
       const auto& c = mCalibParams[asic][ch];
 
-      if (c.badMask & bit) {
-        badChannels.push_back(ch);
+      if (c.badFitMask & bit) {
+        badFitChannels.push_back(ch);
         continue;
       }
       for (size_t i = 0; i < params.size(); ++i) {
@@ -209,7 +209,7 @@ void HgcrocResponse::regularizeBadCalibParams()
       nGood++;
     }
 
-    if (badChannels.empty()) {
+    if (badFitChannels.empty()) {
       return; // nothing to replace
     }
     if (nGood == 0) {
@@ -229,7 +229,7 @@ void HgcrocResponse::regularizeBadCalibParams()
     }
 
     // replacing bad parameter with the mean for the ASIC half
-    for (int ch : badChannels) {
+    for (int ch : badFitChannels) {
       auto& c = mCalibParams[asic][ch];
       for (size_t i = 0; i < params.size(); ++i) {
         c.*params[i] = meanParams[i];

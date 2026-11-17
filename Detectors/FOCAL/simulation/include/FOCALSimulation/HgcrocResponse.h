@@ -54,10 +54,10 @@ class HgcrocResponse
     double qTOT = 0;      // charge at which TOT starts
 
     bool seenLow = false, seenHigh = false; // calibration found in each file
-    uint16_t badMask = 0;                   // which groups of fit parameters are bad (replaced by the half mean)
+    uint16_t badFitMask = 0;                // which groups of fit parameters are bad (replaced by the half mean)
   };
 
-  // bits used to set ChannelCalib::badMask, one per group of fit parameters
+  // bits used to set ChannelCalib::badFitMask, one per group of fit parameters
   enum BadCalibBits : uint16_t {
     BadADCFit = 1 << 0,
     BadTOTLowFit = 1 << 1,
