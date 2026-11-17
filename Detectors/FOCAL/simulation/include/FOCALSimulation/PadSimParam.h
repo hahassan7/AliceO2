@@ -44,11 +44,6 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   bool getUseBadChannels() const { return mUseBadChannels; }
   bool getDebugStream() const { return mDebugStream; }
 
-  void PrintStream(std::ostream& stream) const;
-
-  O2ParamDef(PadSimParam, "FOCALPadSimParam");
-
- private:
   float mEnergyPerPair{3.65};
   float mCCE{1.0};
   std::string mCalibFileLowRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/FOCALEPads_Calibration_20230208.txt"};
@@ -63,6 +58,10 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   bool mReadoutAllSensors{false};
   bool mUseBadChannels{false};
   bool mDebugStream{false};
+
+  void PrintStream(std::ostream& stream) const;
+
+  O2ParamDef(PadSimParam, "FOCALPadSimParam");
 };
 
 std::ostream& operator<<(std::ostream& stream, const PadSimParam& s);
