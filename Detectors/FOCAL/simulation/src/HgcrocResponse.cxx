@@ -283,7 +283,7 @@ void HgcrocResponse::computeDerivedParams()
       c.qLin = c.adcHigherFitRange;
       c.adcMargin = mConfig.mADCMax - c.adcConst - c.gain * c.qLin;
       c.qSat = c.qLin + 2 * c.adcMargin / c.gain;
-      c.qTOT = c.qSat + mConfig.mADCTOTGap;
+      c.qTOT = c.totLowerFitRange;
     }
   }
 }
