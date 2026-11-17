@@ -44,20 +44,43 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   bool getUseBadChannels() const { return mUseBadChannels; }
   bool getDebugStream() const { return mDebugStream; }
 
-  float mEnergyPerPair{3.65};
-  float mCCE{1.0};
+  int getNAsics() const { return mNAsics; }
+  int getNChannels() const { return mNChannels; }
+  int getADCMax() const { return mADCMax; }
+
+  float getADCSlopeMin() const { return mADCSlopeMin; }
+  float getADCSlopeMax() const { return mADCSlopeMax; }
+  float getTOTSlopeMin() const { return mTOTSlopeMin; }
+  float getTOTSlopeMax() const { return mTOTSlopeMax; }
+  float getTOTSlopeHighRangeMin() const { return mTOTSlopeHighRangeMin; }
+  float getTOTSlopeHighRangeMax() const { return mTOTSlopeHighRangeMax; }
+
+  float mEnergyPerPair{3.65f};
+  float mCCE{1.0f};
   std::string mCalibFileLowRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/FOCALEPads_Calibration_20230208.txt"};
   std::string mCalibFileHighRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/calib_highinjection_pdfextracted.txt"};
-  float mADCTOTGap{0.1};
-  float mTOTTransitionLow{0.5};
-  float mTOTTransitionHigh{2.0};
-  float mNoiseADC{1.5};
-  float mCMNADC{4.5};
-  float mTOTSmear{2.0};
-  float mTOAThreshold{0.002};
+  float mADCTOTGap{0.1f};
+  float mTOTTransitionLow{0.5f};
+  float mTOTTransitionHigh{2.0f};
+  float mNoiseADC{1.5f};
+  float mCMNADC{4.5f};
+  float mTOTSmear{2.0f};
+  float mTOAThreshold{0.002f};
   bool mReadoutAllSensors{false};
   bool mUseBadChannels{false};
   bool mDebugStream{false};
+
+  int mNAsics{18}; // test-beam 2023 setup
+  int mNChannels{72};
+  int mADCMax{1023}; // 10-bit ADC
+
+  // sanity windows for the calibration fits (from the test-beam analysis)
+  float mADCSlopeMin{2500.f};
+  float mADCSlopeMax{4500.f};
+  float mTOTSlopeMin{200.f};
+  float mTOTSlopeMax{550.f};
+  float mTOTSlopeHighRangeMin{150.f};
+  float mTOTSlopeHighRangeMax{300.f};
 
   void PrintStream(std::ostream& stream) const;
 

@@ -39,7 +39,16 @@ void PadSimParam::PrintStream(std::ostream& stream) const
          << "\n FOCAL::PadSimParam::mTOAThreshold = " << mTOAThreshold
          << "\n FOCAL::PadSimParam::mReadoutAllSensors = " << (mReadoutAllSensors ? "yes" : "no")
          << "\n FOCAL::PadSimParam::mUseBadChannels = " << (mUseBadChannels ? "yes" : "no")
-         << "\n FOCAL::PadSimParam::mDebugStream = " << (mDebugStream ? "yes" : "no") << "\n";
+         << "\n FOCAL::PadSimParam::mDebugStream = " << (mDebugStream ? "yes" : "no")
+         << "\n FOCAL::PadSimParam::mNAsics = " << mNAsics
+         << "\n FOCAL::PadSimParam::mNChannels = " << mNChannels
+         << "\n FOCAL::PadSimParam::mADCMax = " << mADCMax
+         << "\n FOCAL::PadSimParam::mADCSlopeMin = " << mADCSlopeMin
+         << "\n FOCAL::PadSimParam::mADCSlopeMax = " << mADCSlopeMax
+         << "\n FOCAL::PadSimParam::mTOTSlopeMin = " << mTOTSlopeMin
+         << "\n FOCAL::PadSimParam::mTOTSlopeMax = " << mTOTSlopeMax
+         << "\n FOCAL::PadSimParam::mTOTSlopeHighRangeMin = " << mTOTSlopeHighRangeMin
+         << "\n FOCAL::PadSimParam::mTOTSlopeHighRangeMax = " << mTOTSlopeHighRangeMax << "\n";
 }
 
 } // namespace o2::focal

@@ -17,7 +17,6 @@
 
 #include <fstream>
 #include <sstream>
-#include <vector>
 #include <filesystem>
 
 namespace o2
@@ -28,13 +27,35 @@ namespace focal
 void HgcrocResponse::init()
 {
   mInitialized = false;
-  mCalibParams = {};
 
   const PadSimParam& pars = PadSimParam::Instance();
 
-  TString lowRangeCalibData = pars.getCalibFileLowRange();
+  // loading config from SimParam class for pads or HCAL
+  mConfig.mNAsics = pars.getNAsics();
+  mConfig.mNChannels = pars.getNChannels();
+  mConfig.mADCMax = pars.getADCMax();
+  mConfig.mADCSlopeMin = pars.getADCSlopeMin();
+  mConfig.mADCSlopeMax = pars.getADCSlopeMax();
+  mConfig.mTOTSlopeMin = pars.getTOTSlopeMin();
+  mConfig.mTOTSlopeMax = pars.getTOTSlopeMax();
+  mConfig.mTOTSlopeHighRangeMin = pars.getTOTSlopeHighRangeMin();
+  mConfig.mTOTSlopeHighRangeMax = pars.getTOTSlopeHighRangeMax();
+  mConfig.mCalibFileLowRange = pars.getCalibFileLowRange();
+  mConfig.mCalibFileHighRange = pars.getCalibFileHighRange();
+  mConfig.mADCTOTGap = pars.getADCTOTGap();
+
+  if (mConfig.mNAsics <= 0 || mConfig.mNChannels <= 0) {
+    LOG(fatal) << "focal::HgcrocResponse: number of ASICs and channels must be positive";
+  }
+  if (mConfig.mNChannels % 2 != 0) {
+    LOG(fatal) << "focal::HgcrocResponse: number of channels per ASIC must be even (the ASIC is split in two halves)";
+  }
+
+  mCalibParams.assign(mConfig.mNAsics, std::vector<ChannelCalib>(mConfig.mNChannels));
+
+  TString lowRangeCalibData = mConfig.mCalibFileLowRange;
   gSystem->ExpandPathName(lowRangeCalibData);
-  TString highRangeCalibData = pars.getCalibFileHighRange();
+  TString highRangeCalibData = mConfig.mCalibFileHighRange;
   gSystem->ExpandPathName(highRangeCalibData);
 
   loadCalibLowRange(lowRangeCalibData.Data());
@@ -73,7 +94,7 @@ void HgcrocResponse::loadCalibLowRange(const std::string& filepath)
       LOG(fatal) << "focal::HgcrocResponse: " << std::filesystem::path(filepath).filename().string() << ":"
                  << lineNum << ": error parsing line";
     }
-    if ((asic < 0) || (asic > NASICS - 1) || (ch < 0) || (ch > NCHANNELS - 1)) {
+    if ((asic < 0) || (asic > mConfig.mNAsics - 1) || (ch < 0) || (ch > mConfig.mNChannels - 1)) {
       LOG(fatal) << "focal::HgcrocResponse: " << std::filesystem::path(filepath).filename().string() << ":"
                  << lineNum << ": out of range entry for ASIC " << asic << " channel " << ch;
     }
@@ -121,7 +142,7 @@ void HgcrocResponse::loadCalibHighRange(const std::string& filepath)
       LOG(fatal) << "focal::HgcrocResponse: " << std::filesystem::path(filepath).filename().string() << ":"
                  << lineNum << ": error parsing line";
     }
-    if ((asic < 0) || (asic > NASICS - 1) || (ch < 0) || (ch > NCHANNELS - 1)) {
+    if ((asic < 0) || (asic > mConfig.mNAsics - 1) || (ch < 0) || (ch > mConfig.mNChannels - 1)) {
       LOG(fatal) << "focal::HgcrocResponse: " << std::filesystem::path(filepath).filename().string() << ":"
                  << lineNum << ": out of range entry for ASIC " << asic << " channel " << ch;
     }
@@ -139,8 +160,8 @@ void HgcrocResponse::loadCalibHighRange(const std::string& filepath)
 // validates whether calibration parameters are valid or nonsense and sets badFitMask accordingly
 void HgcrocResponse::validateCalibParams()
 {
-  for (int asic = 0; asic < NASICS; ++asic) {
-    for (int ch = 0; ch < NCHANNELS; ++ch) {
+  for (int asic = 0; asic < mConfig.mNAsics; ++asic) {
+    for (int ch = 0; ch < mConfig.mNChannels; ++ch) {
       auto& c = mCalibParams[asic][ch];
       c.badFitMask = 0;
 
@@ -149,13 +170,13 @@ void HgcrocResponse::validateCalibParams()
         LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                      << " did not receive calibration parameters for low charge injection fit, half mean will be used";
       } else {
-        const double adcMargin = ADCMAX - c.adcConst - c.adcSlope * c.adcHigherFitRange;
-        if (c.adcSlope < ADCSLOPE_MIN || c.adcSlope > ADCSLOPE_MAX || adcMargin <= 0) {
+        const double adcMargin = mConfig.mADCMax - c.adcConst - c.adcSlope * c.adcHigherFitRange;
+        if (c.adcSlope < mConfig.mADCSlopeMin || c.adcSlope > mConfig.mADCSlopeMax || adcMargin <= 0) {
           c.badFitMask |= BadADCFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ADC fit (slope = " << c.adcSlope << ", adcMargin = " << adcMargin << "), will be replaced by the half mean";
         }
-        if (c.totSlope < TOTSLOPE_MIN || c.totSlope > TOTSLOPE_MAX) {
+        if (c.totSlope < mConfig.mTOTSlopeMin || c.totSlope > mConfig.mTOTSlopeMax) {
           c.badFitMask |= BadTOTLowFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ToT low charge injection fit parameters (slope = " << c.totSlope << "), will be replaced by the half mean";
@@ -167,7 +188,7 @@ void HgcrocResponse::validateCalibParams()
         LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                      << " did not receive calibration parameters for high charge injection fit, half mean will be used";
       } else {
-        if (c.totSlopeHigh < TOTSLOPEHIGH_MIN || c.totSlopeHigh > TOTSLOPEHIGH_MAX) {
+        if (c.totSlopeHigh < mConfig.mTOTSlopeHighRangeMin || c.totSlopeHigh > mConfig.mTOTSlopeHighRangeMax) {
           c.badFitMask |= BadTOTHighFit;
           LOG(warning) << "focal::HgcrocResponse: ASIC " << asic << " channel " << ch
                        << ": bad ToT high charge injection fit parameters (slope = " << c.totSlopeHigh << "), will be replaced by the half mean";
@@ -187,8 +208,8 @@ void HgcrocResponse::regularizeBadCalibParams()
   const std::vector<Param> totHighParams{&ChannelCalib::totConstHigh, &ChannelCalib::totSlopeHigh};
 
   auto regularizeGroup = [this](int asic, int half, uint16_t bit, const std::vector<Param>& params) {
-    const int firstChannel = half * NCHANNELS / 2;
-    const int lastChannel = firstChannel + NCHANNELS / 2;
+    const int firstChannel = half * mConfig.mNChannels / 2;
+    const int lastChannel = firstChannel + mConfig.mNChannels / 2;
 
     int nGood = 0;
     std::vector<double> meanParams(params.size(), 0.);
@@ -235,7 +256,7 @@ void HgcrocResponse::regularizeBadCalibParams()
         c.*params[i] = meanParams[i];
       }
       if (bit == BadADCFit) { // the half mean does not guarantee adcMargin > 0, so check it again after the substitution
-        const double adcMargin = ADCMAX - c.adcConst - c.adcSlope * c.adcHigherFitRange;
+        const double adcMargin = mConfig.mADCMax - c.adcConst - c.adcSlope * c.adcHigherFitRange;
         if (adcMargin <= 0) {
           LOG(fatal) << "focal::HgcrocResponse: the ADC fit parameters of ASIC " << asic << " half " << half
                      << " leave no ADC counts above the linear range (adcMargin = "
@@ -245,7 +266,7 @@ void HgcrocResponse::regularizeBadCalibParams()
     }
   };
 
-  for (int asic = 0; asic < NASICS; ++asic) {
+  for (int asic = 0; asic < mConfig.mNAsics; ++asic) {
     for (int half = 0; half < 2; ++half) {
       regularizeGroup(asic, half, BadADCFit, adcParams);
       regularizeGroup(asic, half, BadTOTLowFit, totLowParams);
@@ -256,15 +277,13 @@ void HgcrocResponse::regularizeBadCalibParams()
 
 void HgcrocResponse::computeDerivedParams()
 {
-  const PadSimParam& pars = PadSimParam::Instance();
-
   for (auto& row : mCalibParams) {
     for (auto& c : row) {
       c.gain = c.adcSlope;
       c.qLin = c.adcHigherFitRange;
-      c.adcMargin = ADCMAX - c.adcConst - c.gain * c.qLin;
+      c.adcMargin = mConfig.mADCMax - c.adcConst - c.gain * c.qLin;
       c.qSat = c.qLin + 2 * c.adcMargin / c.gain;
-      c.qTOT = c.qSat + pars.getADCTOTGap();
+      c.qTOT = c.qSat + mConfig.mADCTOTGap;
     }
   }
 }

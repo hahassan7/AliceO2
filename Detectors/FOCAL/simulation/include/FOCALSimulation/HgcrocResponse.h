@@ -12,7 +12,7 @@
 #ifndef ALICEO2_FOCAL_HGCROCRESPONSE_H_
 #define ALICEO2_FOCAL_HGCROCRESPONSE_H_
 
-#include <array>
+#include <vector>
 #include <string>
 #include <cstdint>
 
@@ -24,15 +24,6 @@ namespace focal
 class HgcrocResponse
 {
  public:
-  static constexpr int NASICS = 18; // test-beam 2023 setup
-  static constexpr int NCHANNELS = 72;
-  static constexpr int ADCMAX = 1023; // 10-bit ADC
-
-  // sanity windows for the calibration fits (from the test-beam analysis)
-  static constexpr double ADCSLOPE_MIN = 2500., ADCSLOPE_MAX = 4500.;
-  static constexpr double TOTSLOPE_MIN = 200., TOTSLOPE_MAX = 550.;
-  static constexpr double TOTSLOPEHIGH_MIN = 150., TOTSLOPEHIGH_MAX = 300.;
-
   // container for the calibration parameters of each pad
   struct ChannelCalib {
     double adcConst = 0;          // ADC fit constant
@@ -50,7 +41,7 @@ class HgcrocResponse
     double gain = 0;      // ADC counts per pC
     double qLin = 0;      // end of the linear ADC range
     double adcMargin = 0; // ADC counts left above the linear range
-    double qSat = 0;      // charge at which ADC reaches ADCMAX
+    double qSat = 0;      // charge at which ADC reaches ADC max
     double qTOT = 0;      // charge at which TOT starts
 
     bool seenLow = false, seenHigh = false; // calibration found in each file
@@ -64,9 +55,26 @@ class HgcrocResponse
     BadTOTHighFit = 1 << 2
   };
 
+  // container for config. parameters imported from PadSimParam or HCALSimParam
+  struct Config {
+    int mNAsics{0};
+    int mNChannels{0};
+    int mADCMax{0};
+    float mADCSlopeMin{0.f};
+    float mADCSlopeMax{0.f};
+    float mTOTSlopeMin{0.f};
+    float mTOTSlopeMax{0.f};
+    float mTOTSlopeHighRangeMin{0.f};
+    float mTOTSlopeHighRangeMax{0.f};
+    std::string mCalibFileLowRange;
+    std::string mCalibFileHighRange;
+    float mADCTOTGap{0.f};
+  };
+
   void init();
   bool isInitialized() const { return mInitialized; }
-  const std::array<std::array<ChannelCalib, NCHANNELS>, NASICS>& getCalibParams() const { return mCalibParams; }
+  const std::vector<std::vector<ChannelCalib>>& getCalibParams() const { return mCalibParams; }
+  const Config& getConfig() const { return mConfig; }
 
  private:
   void loadCalibLowRange(const std::string& filepath);
@@ -75,7 +83,8 @@ class HgcrocResponse
   void regularizeBadCalibParams();
   void computeDerivedParams();
 
-  std::array<std::array<ChannelCalib, NCHANNELS>, NASICS> mCalibParams;
+  std::vector<std::vector<ChannelCalib>> mCalibParams;
+  Config mConfig;
   bool mInitialized = false;
 };
 
