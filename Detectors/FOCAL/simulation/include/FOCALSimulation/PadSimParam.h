@@ -15,7 +15,6 @@
 #include <string>
 #include "CommonUtils/ConfigurableParam.h"
 #include "CommonUtils/ConfigurableParamHelper.h"
-#include "Rtypes.h"
 
 namespace o2
 {
@@ -30,40 +29,40 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
  public:
   ~PadSimParam() override = default;
 
-  Float_t getEnergyPerPair() const { return mEnergyPerPair; }
-  Float_t getCCE() const { return mCCE; }
+  float getEnergyPerPair() const { return mEnergyPerPair; }
+  float getCCE() const { return mCCE; }
   const std::string& getCalibFileLowRange() const { return mCalibFileLowRange; }
   const std::string& getCalibFileHighRange() const { return mCalibFileHighRange; }
-  Float_t getADCTOTGap() const { return mADCTOTGap; }
-  Float_t getTOTTransitionLow() const { return mTOTTransitionLow; }
-  Float_t getTOTTransitionHigh() const { return mTOTTransitionHigh; }
-  Float_t getNoiseADC() const { return mNoiseADC; }
-  Float_t getCMNADC() const { return mCMNADC; }
-  Float_t getTOTSmear() const { return mTOTSmear; }
-  Float_t getTOAThreshold() const { return mTOAThreshold; }
-  Bool_t getReadoutAllSensors() const { return mReadoutAllSensors; }
-  Bool_t getUseBadChannels() const { return mUseBadChannels; }
-  Bool_t getDebugStream() const { return mDebugStream; }
+  float getADCTOTGap() const { return mADCTOTGap; }
+  float getTOTTransitionLow() const { return mTOTTransitionLow; }
+  float getTOTTransitionHigh() const { return mTOTTransitionHigh; }
+  float getNoiseADC() const { return mNoiseADC; }
+  float getCMNADC() const { return mCMNADC; }
+  float getTOTSmear() const { return mTOTSmear; }
+  float getTOAThreshold() const { return mTOAThreshold; }
+  bool getReadoutAllSensors() const { return mReadoutAllSensors; }
+  bool getUseBadChannels() const { return mUseBadChannels; }
+  bool getDebugStream() const { return mDebugStream; }
 
   void PrintStream(std::ostream& stream) const;
 
   O2ParamDef(PadSimParam, "FOCALPadSimParam");
 
  private:
-  Float_t mEnergyPerPair{3.65};
-  Float_t mCCE{1.0};
+  float mEnergyPerPair{3.65};
+  float mCCE{1.0};
   std::string mCalibFileLowRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/FOCALEPads_Calibration_20230208.txt"};
   std::string mCalibFileHighRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/calib_highinjection_pdfextracted.txt"};
-  Float_t mADCTOTGap{0.1};
-  Float_t mTOTTransitionLow{0.5};
-  Float_t mTOTTransitionHigh{2.0};
-  Float_t mNoiseADC{1.5};
-  Float_t mCMNADC{4.5};
-  Float_t mTOTSmear{2.0};
-  Float_t mTOAThreshold{0.002};
-  Bool_t mReadoutAllSensors{false};
-  Bool_t mUseBadChannels{false};
-  Bool_t mDebugStream{false};
+  float mADCTOTGap{0.1};
+  float mTOTTransitionLow{0.5};
+  float mTOTTransitionHigh{2.0};
+  float mNoiseADC{1.5};
+  float mCMNADC{4.5};
+  float mTOTSmear{2.0};
+  float mTOAThreshold{0.002};
+  bool mReadoutAllSensors{false};
+  bool mUseBadChannels{false};
+  bool mDebugStream{false};
 };
 
 std::ostream& operator<<(std::ostream& stream, const PadSimParam& s);
