@@ -71,7 +71,8 @@ class HgcrocResponse
     float mADCTOTGap{0.f};
   };
 
-  void init();
+  template <typename SimParam>
+  void init(const SimParam& pars);
   bool isInitialized() const { return mInitialized; }
   const std::vector<std::vector<ChannelCalib>>& getCalibParams() const { return mCalibParams; }
   const Config& getConfig() const { return mConfig; }

@@ -24,11 +24,10 @@ namespace o2
 namespace focal
 {
 
-void HgcrocResponse::init()
+template <typename SimParam>
+void HgcrocResponse::init(const SimParam& pars)
 {
   mInitialized = false;
-
-  const PadSimParam& pars = PadSimParam::Instance();
 
   // loading config from SimParam class for pads or HCAL
   mConfig.mNAsics = pars.getNAsics();
@@ -66,6 +65,9 @@ void HgcrocResponse::init()
 
   mInitialized = true;
 }
+
+template void HgcrocResponse::init<PadSimParam>(const PadSimParam&);
+// add HCAL here once it provides the same getters
 
 void HgcrocResponse::loadCalibLowRange(const std::string& filepath)
 {
