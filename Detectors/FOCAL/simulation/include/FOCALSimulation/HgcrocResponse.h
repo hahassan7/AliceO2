@@ -72,7 +72,6 @@ class HgcrocResponse
     float mTOTLowFitMax{0.f};
     std::string mCalibFileLowRange;
     std::string mCalibFileHighRange;
-    float mADCTOTGap{0.f};
   };
 
   template <typename SimParam>

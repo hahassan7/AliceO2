@@ -30,7 +30,6 @@ void PadSimParam::PrintStream(std::ostream& stream) const
          << "\n FOCAL::PadSimParam::mCCE = " << mCCE
          << "\n FOCAL::PadSimParam::mCalibFileLowRange = " << mCalibFileLowRange
          << "\n FOCAL::PadSimParam::mCalibFileHighRange = " << mCalibFileHighRange
-         << "\n FOCAL::PadSimParam::mADCTOTGap = " << mADCTOTGap
          << "\n FOCAL::PadSimParam::mTOTTransitionLow = " << mTOTTransitionLow
          << "\n FOCAL::PadSimParam::mTOTTransitionHigh = " << mTOTTransitionHigh
          << "\n FOCAL::PadSimParam::mNoiseADC = " << mNoiseADC

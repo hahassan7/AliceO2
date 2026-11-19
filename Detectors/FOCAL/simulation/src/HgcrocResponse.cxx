@@ -45,7 +45,6 @@ void HgcrocResponse::init(const SimParam& pars)
   mConfig.mTOTLowFitMax = pars.mTOTLowFitMax;
   mConfig.mCalibFileLowRange = pars.mCalibFileLowRange;
   mConfig.mCalibFileHighRange = pars.mCalibFileHighRange;
-  mConfig.mADCTOTGap = pars.mADCTOTGap;
 
   if (mConfig.mNAsics <= 0 || mConfig.mNChannels <= 0) {
     LOG(fatal) << "focal::HgcrocResponse: number of ASICs and channels must be positive";

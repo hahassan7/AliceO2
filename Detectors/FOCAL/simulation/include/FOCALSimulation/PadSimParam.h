@@ -8,6 +8,7 @@
 // In applying this license CERN does not waive the privileges and immunities
 // granted to it by virtue of its status as an Intergovernmental Organization
 // or submit itself to any jurisdiction.
+
 #ifndef ALICEO2_FOCAL_PADSIMPARAM_H_
 #define ALICEO2_FOCAL_PADSIMPARAM_H_
 
@@ -33,7 +34,6 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   float getCCE() const { return mCCE; }
   const std::string& getCalibFileLowRange() const { return mCalibFileLowRange; }
   const std::string& getCalibFileHighRange() const { return mCalibFileHighRange; }
-  float getADCTOTGap() const { return mADCTOTGap; }
   float getTOTTransitionLow() const { return mTOTTransitionLow; }
   float getTOTTransitionHigh() const { return mTOTTransitionHigh; }
   float getNoiseADC() const { return mNoiseADC; }
@@ -59,7 +59,6 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   float mCCE{1.0f};
   std::string mCalibFileLowRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/FOCALEPads_Calibration_20230208.txt"};
   std::string mCalibFileHighRange{"${O2_ROOT}/share/Detectors/FOC/simulation/data/calib_highinjection_pdfextracted.txt"};
-  float mADCTOTGap{0.1f};
   float mTOTTransitionLow{0.5f};
   float mTOTTransitionHigh{2.0f};
   float mNoiseADC{1.5f};
