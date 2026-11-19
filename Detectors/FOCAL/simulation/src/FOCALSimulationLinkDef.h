@@ -26,4 +26,8 @@
 #pragma link C++ class o2::conf::ConfigurableParamHelper < o2::focal::HCALSimParam> + ;
 #pragma link C++ class o2::focal::SiPMResponse + ;
 
+#pragma link C++ class o2::focal::PadSimParam + ;
+#pragma link C++ class o2::conf::ConfigurableParamHelper < o2::focal::PadSimParam> + ;
+#pragma link C++ class o2::focal::HgcrocResponse + ;
+
 #endif
