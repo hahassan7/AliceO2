@@ -30,18 +30,18 @@ void HgcrocResponse::init(const SimParam& pars)
   mInitialized = false;
 
   // loading config from SimParam class for pads or HCAL
-  mConfig.mNAsics = pars.getNAsics();
-  mConfig.mNChannels = pars.getNChannels();
-  mConfig.mADCMax = pars.getADCMax();
-  mConfig.mADCSlopeMin = pars.getADCSlopeMin();
-  mConfig.mADCSlopeMax = pars.getADCSlopeMax();
-  mConfig.mTOTSlopeMin = pars.getTOTSlopeMin();
-  mConfig.mTOTSlopeMax = pars.getTOTSlopeMax();
-  mConfig.mTOTSlopeHighRangeMin = pars.getTOTSlopeHighRangeMin();
-  mConfig.mTOTSlopeHighRangeMax = pars.getTOTSlopeHighRangeMax();
-  mConfig.mCalibFileLowRange = pars.getCalibFileLowRange();
-  mConfig.mCalibFileHighRange = pars.getCalibFileHighRange();
-  mConfig.mADCTOTGap = pars.getADCTOTGap();
+  mConfig.mNAsics = pars.mNAsics;
+  mConfig.mNChannels = pars.mNChannels;
+  mConfig.mADCMax = pars.mADCMax;
+  mConfig.mADCSlopeMin = pars.mADCSlopeMin;
+  mConfig.mADCSlopeMax = pars.mADCSlopeMax;
+  mConfig.mTOTSlopeMin = pars.mTOTSlopeMin;
+  mConfig.mTOTSlopeMax = pars.mTOTSlopeMax;
+  mConfig.mTOTSlopeHighRangeMin = pars.mTOTSlopeHighRangeMin;
+  mConfig.mTOTSlopeHighRangeMax = pars.mTOTSlopeHighRangeMax;
+  mConfig.mCalibFileLowRange = pars.mCalibFileLowRange;
+  mConfig.mCalibFileHighRange = pars.mCalibFileHighRange;
+  mConfig.mADCTOTGap = pars.mADCTOTGap;
 
   if (mConfig.mNAsics <= 0 || mConfig.mNChannels <= 0) {
     LOG(fatal) << "focal::HgcrocResponse: number of ASICs and channels must be positive";
