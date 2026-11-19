@@ -66,6 +66,10 @@ class HgcrocResponse
     float mTOTSlopeMax{0.f};
     float mTOTSlopeHighRangeMin{0.f};
     float mTOTSlopeHighRangeMax{0.f};
+    float mADCHighFitMin{0.f};
+    float mADCHighFitMax{0.f};
+    float mTOTLowFitMin{0.f};
+    float mTOTLowFitMax{0.f};
     std::string mCalibFileLowRange;
     std::string mCalibFileHighRange;
     float mADCTOTGap{0.f};

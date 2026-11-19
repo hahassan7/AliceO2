@@ -81,6 +81,10 @@ class PadSimParam : public o2::conf::ConfigurableParamHelper<PadSimParam>
   float mTOTSlopeMax{550.f};
   float mTOTSlopeHighRangeMin{150.f};
   float mTOTSlopeHighRangeMax{300.f};
+  float mADCHighFitMin{0.15f}; // min. value for upper charge limit of ADC fit
+  float mADCHighFitMax{0.25f}; // max. value for upper charge limit of ADC fit
+  float mTOTLowFitMin{0.15f};  // min. value for lower charge limit of ToT fit
+  float mTOTLowFitMax{0.35f};  // max. value for lower charge limit of ToT fit
 
   void PrintStream(std::ostream& stream) const;
 

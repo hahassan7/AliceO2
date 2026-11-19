@@ -39,6 +39,10 @@ void HgcrocResponse::init(const SimParam& pars)
   mConfig.mTOTSlopeMax = pars.mTOTSlopeMax;
   mConfig.mTOTSlopeHighRangeMin = pars.mTOTSlopeHighRangeMin;
   mConfig.mTOTSlopeHighRangeMax = pars.mTOTSlopeHighRangeMax;
+  mConfig.mADCHighFitMin = pars.mADCHighFitMin;
+  mConfig.mADCHighFitMax = pars.mADCHighFitMax;
+  mConfig.mTOTLowFitMin = pars.mTOTLowFitMin;
+  mConfig.mTOTLowFitMax = pars.mTOTLowFitMax;
   mConfig.mCalibFileLowRange = pars.mCalibFileLowRange;
   mConfig.mCalibFileHighRange = pars.mCalibFileHighRange;
   mConfig.mADCTOTGap = pars.mADCTOTGap;
@@ -176,12 +180,18 @@ void HgcrocResponse::validateCalibParams()
         logMissingLow << " (" << asic << ", " << ch << ")";
       } else {
         const double adcMargin = mConfig.mADCMax - c.adcConst - c.adcSlope * c.adcHigherFitRange;
-        if (c.adcSlope < mConfig.mADCSlopeMin || c.adcSlope > mConfig.mADCSlopeMax || adcMargin <= 0) {
+        const bool badADCSlope = c.adcSlope < mConfig.mADCSlopeMin || c.adcSlope > mConfig.mADCSlopeMax;
+        const bool badADCMargin = adcMargin <= 0;
+        const bool badADCFitRange = c.adcHigherFitRange < mConfig.mADCHighFitMin || c.adcHigherFitRange > mConfig.mADCHighFitMax;
+        const bool badTOTSlope = c.totSlope < mConfig.mTOTSlopeMin || c.totSlope > mConfig.mTOTSlopeMax;
+        const bool badTOTFitRange = c.totLowerFitRange < mConfig.mTOTLowFitMin || c.totLowerFitRange > mConfig.mTOTLowFitMax;
+
+        if (badADCSlope || badADCMargin || badADCFitRange) {
           c.badFitMask |= BadADCFit;
           nBadADC++;
           logBadADC << " (" << asic << ", " << ch << ")";
         }
-        if (c.totSlope < mConfig.mTOTSlopeMin || c.totSlope > mConfig.mTOTSlopeMax) {
+        if (badTOTSlope || badTOTFitRange) {
           c.badFitMask |= BadTOTLowFit;
           nBadTOTLow++;
           logBadTOTLow << " (" << asic << ", " << ch << ")";
@@ -193,7 +203,9 @@ void HgcrocResponse::validateCalibParams()
         nMissingHigh++;
         logMissingHigh << " (" << asic << ", " << ch << ")";
       } else {
-        if (c.totSlopeHigh < mConfig.mTOTSlopeHighRangeMin || c.totSlopeHigh > mConfig.mTOTSlopeHighRangeMax) {
+        const bool badTOTSlopeHigh = c.totSlopeHigh < mConfig.mTOTSlopeHighRangeMin || c.totSlopeHigh > mConfig.mTOTSlopeHighRangeMax;
+
+        if (badTOTSlopeHigh) {
           c.badFitMask |= BadTOTHighFit;
           nBadTOTHigh++;
           logBadTOTHigh << " (" << asic << ", " << ch << ")";

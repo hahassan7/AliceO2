@@ -48,7 +48,12 @@ void PadSimParam::PrintStream(std::ostream& stream) const
          << "\n FOCAL::PadSimParam::mTOTSlopeMin = " << mTOTSlopeMin
          << "\n FOCAL::PadSimParam::mTOTSlopeMax = " << mTOTSlopeMax
          << "\n FOCAL::PadSimParam::mTOTSlopeHighRangeMin = " << mTOTSlopeHighRangeMin
-         << "\n FOCAL::PadSimParam::mTOTSlopeHighRangeMax = " << mTOTSlopeHighRangeMax << "\n";
+         << "\n FOCAL::PadSimParam::mTOTSlopeHighRangeMax = " << mTOTSlopeHighRangeMax
+         << "\n FOCAL::PadSimParam::mADCHighFitMin = " << mADCHighFitMin
+         << "\n FOCAL::PadSimParam::mADCHighFitMax = " << mADCHighFitMax
+         << "\n FOCAL::PadSimParam::mTOTLowFitMin = " << mTOTLowFitMin
+         << "\n FOCAL::PadSimParam::mTOTLowFitMax = " << mTOTLowFitMax
+         << "\n";
 }
 
 } // namespace o2::focal
