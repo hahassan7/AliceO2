@@ -215,23 +215,28 @@ void HgcrocResponse::validateCalibParams()
 
   if (nMissingLow > 0) {
     LOG(warning) << "focal::HgcrocResponse: " << nMissingLow << " channels with no low charge injection calibration, "
-                 << "replaced by the half mean (asic, ch):" << logMissingLow.str();
+                 << "replaced by the half mean";
+    LOG(debug) << "focal::HgcrocResponse: channels with no low charge injection calibration (asic, ch):" << logMissingLow.str();
   }
   if (nMissingHigh > 0) {
     LOG(warning) << "focal::HgcrocResponse: " << nMissingHigh << " channels with no high charge injection calibration, "
-                 << "replaced by the half mean (asic, ch):" << logMissingHigh.str();
+                 << "replaced by the half mean";
+    LOG(debug) << "focal::HgcrocResponse: channels with no high charge injection calibration (asic, ch):" << logMissingHigh.str();
   }
   if (nBadADC > 0) {
     LOG(warning) << "focal::HgcrocResponse: " << nBadADC << " channels with a bad ADC fit, "
-                 << "replaced by the half mean (asic, ch):" << logBadADC.str();
+                 << "replaced by the half mean";
+    LOG(debug) << "focal::HgcrocResponse: channels with a bad ADC fit (asic, ch):" << logBadADC.str();
   }
   if (nBadTOTLow > 0) {
     LOG(warning) << "focal::HgcrocResponse: " << nBadTOTLow << " channels with a bad low charge injection ToT fit, "
-                 << "replaced by the half mean (asic, ch):" << logBadTOTLow.str();
+                 << "replaced by the half mean";
+    LOG(debug) << "focal::HgcrocResponse: channels with a bad low charge injection ToT fit (asic, ch):" << logBadTOTLow.str();
   }
   if (nBadTOTHigh > 0) {
     LOG(warning) << "focal::HgcrocResponse: " << nBadTOTHigh << " channels with a bad high charge injection ToT fit, "
-                 << "replaced by the half mean (asic, ch):" << logBadTOTHigh.str();
+                 << "replaced by the half mean";
+    LOG(debug) << "focal::HgcrocResponse: channels with a bad high charge injection ToT fit (asic, ch):" << logBadTOTHigh.str();
   }
 }
 
